@@ -29,13 +29,25 @@ class TaskRepository {
     return task.copyWith(id: localId);
   }
 
-  Future<List<Task>> getAllTasks({bool onlyActive = false, String? sortBy, bool ascending = true}) async {
+  Future<List<Task>> getAllTasks({
+    bool onlyActive = false,
+    String? sortBy,
+    bool ascending = true
+  }) async {
     if (_online) {
       final tasks = await _firebase.getAllTasks(_uid!, onlyActive: onlyActive);
       await _syncToLocal(tasks);
-      return tasks;
+      return _local.getAllTasks(
+          onlyActive: onlyActive,
+          sortBy: sortBy,
+          ascending: ascending
+      );
     }
-    return _local.getAllTasks(onlyActive: onlyActive, sortBy: sortBy, ascending: ascending);
+    return _local.getAllTasks(
+        onlyActive: onlyActive,
+        sortBy: sortBy,
+        ascending: ascending
+    );
   }
 
   Future<void> updateTask(Task task) async {
@@ -64,13 +76,12 @@ class TaskRepository {
     for (final task in tasks) {
       final existing = await _local.getTaskByFirebaseId(task.firebaseId!);
       if (existing == null) {
-        await _local.insertTask(task);
+        final localId = await _local.insertTask(task);
       } else {
         await _local.updateTask(task.copyWith(id: existing.id));
       }
     }
   }
-
   Future<void> syncFromFirebase() async {
     if (!_online) return;
     final tasks = await _firebase.getAllTasks(_uid!);

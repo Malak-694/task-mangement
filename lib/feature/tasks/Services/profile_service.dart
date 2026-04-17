@@ -56,11 +56,10 @@ class ProfileService {
           'student_id': user['student_id'] ?? '—',
           'avatar_path': user['avatar_url'] ?? user['avatar_path'],
           'gender': user['gender'],
-          'id': user['id'], // Firestore doc ID
+          'id': user['id'],
         };
       }
     } else {
-      // Get from Local (already has correct field names)
       user = await LocalProfileService.instance.getUserByEmail(email);
     }
 
