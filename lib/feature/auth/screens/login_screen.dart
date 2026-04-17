@@ -1,5 +1,9 @@
+import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/material.dart';
+import 'package:mobile_assignment/core/session_manager.dart';
+import 'package:mobile_assignment/feature/auth/models/auth_result.dart';
 import 'package:mobile_assignment/feature/auth/widgets/app_text_field.dart';
+import 'package:mobile_assignment/feature/tasks/Services/task_reprositry.dart';
 
 import '../../../core/style/colors.dart';
 import '../../../core/validator/auth_validator.dart';
@@ -48,6 +52,14 @@ class _LoginScreenState extends State<LoginScreen> {
       return;
     }
 
+    if (result.status == AuthStatus.success) {
+      SessionManager.instance.setUser(_emailController.text.trim());
+      final user = FirebaseAuth.instance.currentUser;
+      if (user != null) {
+        TaskRepository.instance.setUser(user.uid);
+      }
+      Navigator.pushReplacementNamed(context, TaskScreen.routeName);
+    }
     setState(() {
       _isLoading = false;
     });

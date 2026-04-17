@@ -23,7 +23,7 @@ class LocalAuthService {
 
     _database = await openDatabase(
       fullPath,
-      version: 2,
+      version: 3,
       onCreate: (db, version) async {
         await db.execute('''
           CREATE TABLE $_usersTable(
@@ -70,6 +70,12 @@ class LocalAuthService {
 
           await db.execute('DROP TABLE $_usersTable');
           await db.execute('ALTER TABLE ${_usersTable}_new RENAME TO $_usersTable');
+        }
+        if (oldVersion < 3) {
+          // Just add the new column to existing table
+          await db.execute(
+            'ALTER TABLE $_usersTable ADD COLUMN avatar_path TEXT',
+          );
         }
       },
     );
@@ -157,4 +163,21 @@ class LocalAuthService {
       message: 'Login success',
     );
   }
+
+
+  Future<Map<String, dynamic>?> getUserByEmail(String email) async {
+    final db = _database;
+    if (db == null) return null;
+
+    final users = await db.query(
+      _usersTable,
+      where: 'email = ?',
+      whereArgs: [email],
+      limit: 1,
+    );
+
+    return users.isEmpty ? null : users.first;
+  }
+
+  Database? get database => _database;
 }

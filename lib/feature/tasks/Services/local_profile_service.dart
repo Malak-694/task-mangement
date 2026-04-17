@@ -1,0 +1,66 @@
+import 'dart:io';
+
+import 'package:mobile_assignment/feature/auth/services/local_auth_service.dart';
+import 'package:path/path.dart' as p;
+import 'package:path_provider/path_provider.dart';
+
+class LocalProfileService {
+  LocalProfileService._();
+  static final LocalProfileService instance = LocalProfileService._();
+
+  final db = LocalAuthService.instance.database;
+
+  Future<String?> saveAvatarImage(File imageFile, String email) async {
+    try {
+      final appDir = await getApplicationDocumentsDirectory();
+      final avatarDir = Directory(p.join(appDir.path, 'avatars'));
+
+      if (!await avatarDir.exists()) {
+        await avatarDir.create(recursive: true);
+      }
+
+      final sanitizedEmail = email.replaceAll(RegExp(r'[^a-zA-Z0-9]'), '_');
+      final destPath = p.join(avatarDir.path, '$sanitizedEmail.jpg');
+
+      await imageFile.copy(destPath);
+      return destPath;
+    } catch (_) {
+      return null;
+    }
+  }
+
+  Future<bool> updateUser({
+    required String email,
+    required String name,
+    required String studentId,
+    File? avatarFile,
+  }) async {
+    if (db == null) return false;
+
+    String? avatarPath;
+    if (avatarFile != null) {
+      avatarPath = await saveAvatarImage(avatarFile, email);
+    }
+
+    final data = <String, dynamic>{
+      'name': name,
+      'student_id': studentId,
+    };
+
+    if (avatarPath != null) {
+      data['avatar_path'] = avatarPath;
+    }
+
+    final rows = await db!.update(
+      'users',
+      data,
+      where: 'email = ?',
+      whereArgs: [email],
+    );
+    return rows > 0;
+  }
+
+  Future<Map<String, dynamic>?> getUserByEmail(String email) async {
+    return LocalAuthService.instance.getUserByEmail(email);
+  }
+}
