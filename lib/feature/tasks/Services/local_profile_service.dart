@@ -33,6 +33,7 @@ class LocalProfileService {
     required String email,
     required String name,
     required String studentId,
+    required String password,
     File? avatarFile,
   }) async {
     if (db == null) return false;
@@ -45,6 +46,7 @@ class LocalProfileService {
     final data = <String, dynamic>{
       'name': name,
       'student_id': studentId,
+      'password' : password
     };
 
     if (avatarPath != null) {

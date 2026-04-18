@@ -20,12 +20,14 @@ class ProfileService {
     required String email,
     required String name,
     required String studentId,
+    required String password,
     File? avatarFile,
   }) async {
     // Always write to local so the app works offline
     await LocalProfileService.instance.updateUser(
       email: email,
       name: name,
+      password: password,
       studentId: studentId,
       avatarFile: FirebaseBootstrap.isReady ? null : avatarFile,
     );
@@ -34,6 +36,7 @@ class ProfileService {
       return FirebaseProfileService.instance.updateUser(
         email: email,
         name: name,
+        password: password ,
         studentId: studentId,
         avatarFile: avatarFile,
       );
@@ -46,7 +49,6 @@ class ProfileService {
     Map<String, dynamic>? user;
 
     if (FirebaseBootstrap.isReady) {
-      // Get from Firebase
       user = await FirebaseProfileService.instance.getUserByEmail(email);
 
       if (user != null) {
@@ -57,6 +59,7 @@ class ProfileService {
           'avatar_path': user['avatar_url'] ?? user['avatar_path'],
           'gender': user['gender'],
           'id': user['id'],
+          'password' : user['password']
         };
       }
     } else {

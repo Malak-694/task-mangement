@@ -4,7 +4,7 @@ import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/foundation.dart';
 
-import '../../../core/imagekit/imagekit_service.dart'; // ← NEW
+import '../../../core/imagekit/imagekit_service.dart';
 
 class FirebaseProfileService {
   FirebaseProfileService._();
@@ -37,10 +37,12 @@ class FirebaseProfileService {
     required String email,
     required String name,
     required String studentId,
+    required String password,
     File? avatarFile,
   }) async {
     try {
-      final uid = _auth.currentUser?.uid;
+      final user = _auth.currentUser;
+      final uid  = user?.uid;
       if (uid == null) return false;
 
       String? avatarUrl;
@@ -53,22 +55,28 @@ class FirebaseProfileService {
         'student_id':       studentId,
         'university_email': email,
       };
-
-      if (avatarUrl != null) {
-        data['avatar_url'] = avatarUrl;
-      }
+      if (avatarUrl != null) data['avatar_url'] = avatarUrl;
 
       await _db
           .collection(_collection)
           .doc(uid)
           .set(data, SetOptions(merge: true));
 
+      if (password.isNotEmpty) {
+        try {
+          await user!.updatePassword(password);
+        } on FirebaseAuthException catch (e) {
+          debugPrint('Password update failed: ${e.code}');
+          // Profile still saved successfully
+        }
+      }
       return true;
     } catch (e, st) {
       debugPrint('FirebaseProfileService.updateUser failed: $e\n$st');
       return false;
     }
   }
+
 
   Future<Map<String, dynamic>?> getUserByEmail(String email) async {
     try {

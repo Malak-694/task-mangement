@@ -1,11 +1,10 @@
-// lib/feature/tasks/screens/edit_profile_screen.dart
-
 import 'dart:io';
 
 import 'package:flutter/material.dart';
 import 'package:image_picker/image_picker.dart';
 import 'package:mobile_assignment/core/session_manager.dart';
 import 'package:mobile_assignment/core/style/colors.dart';
+import 'package:mobile_assignment/core/validator/auth_validator.dart';
 import 'package:mobile_assignment/feature/tasks/Services/profile_service.dart';
 import 'package:mobile_assignment/feature/tasks/widgets/edit_field.dart';
 
@@ -18,12 +17,15 @@ class EditProfileScreen extends StatefulWidget {
 }
 
 class _EditProfileScreenState extends State<EditProfileScreen> {
-  final _nameController = TextEditingController();
+  final _formKey            = GlobalKey<FormState>();
+  final _nameController      = TextEditingController();
   final _studentIdController = TextEditingController();
-  bool _loading = true;
-  bool _saving = false;
+  final _studentPassword     = TextEditingController();
+
+  bool    _loading = true;
+  bool    _saving  = false;
   String? _email;
-  File? _pickedImage;
+  File?   _pickedImage;
   String? _avatarPath;
 
   @override
@@ -37,11 +39,12 @@ class _EditProfileScreenState extends State<EditProfileScreen> {
     if (_email != null) {
       final user = await ProfileService.instance.getUserByEmail(_email!);
       if (user != null) {
-        _nameController.text = user['name'] ?? '';
+        _nameController.text      = user['name']       ?? '';
         _studentIdController.text = user['student_id'] ?? '';
+        _studentPassword.text     = '';
         setState(() {
-          _avatarPath = user['avatar_path'] ?? null;       // 👈 load saved path
-          _loading = false;
+          _avatarPath = user['avatar_path'];
+          _loading    = false;
         });
       }
     }
@@ -49,18 +52,20 @@ class _EditProfileScreenState extends State<EditProfileScreen> {
   }
 
   Future<void> _saveChanges() async {
+    if (!_formKey.currentState!.validate()) return;
+
     if (_email == null) return;
     setState(() => _saving = true);
 
     final success = await ProfileService.instance.updateUser(
-      email: _email!,
-      name: _nameController.text.trim(),
-      studentId: _studentIdController.text.trim(),
+      email:      _email!,
+      name:       _nameController.text.trim(),
+      studentId:  _studentIdController.text.trim(),
+      password:   _studentPassword.text.trim(),
       avatarFile: _pickedImage,
     );
 
     setState(() => _saving = false);
-
     if (!mounted) return;
 
     if (success) {
@@ -70,7 +75,7 @@ class _EditProfileScreenState extends State<EditProfileScreen> {
           backgroundColor: AppColors.primary,
         ),
       );
-      Navigator.pop(context, true); // true = refresh profile
+      Navigator.pop(context, true);
     } else {
       ScaffoldMessenger.of(context).showSnackBar(
         const SnackBar(
@@ -94,14 +99,12 @@ class _EditProfileScreenState extends State<EditProfileScreen> {
           mainAxisSize: MainAxisSize.min,
           children: [
             ListTile(
-              leading: const Icon(Icons.photo_library_rounded,
-                  color: AppColors.primary),
+              leading: const Icon(Icons.photo_library_rounded, color: AppColors.primary),
               title: const Text('Choose from gallery'),
               onTap: () => Navigator.pop(context, ImageSource.gallery),
             ),
             ListTile(
-              leading: const Icon(Icons.camera_alt_rounded,
-                  color: AppColors.primary),
+              leading: const Icon(Icons.camera_alt_rounded, color: AppColors.primary),
               title: const Text('Take a photo'),
               onTap: () => Navigator.pop(context, ImageSource.camera),
             ),
@@ -127,6 +130,7 @@ class _EditProfileScreenState extends State<EditProfileScreen> {
   void dispose() {
     _nameController.dispose();
     _studentIdController.dispose();
+    _studentPassword.dispose();
     super.dispose();
   }
 
@@ -160,6 +164,8 @@ class _EditProfileScreenState extends State<EditProfileScreen> {
           : Column(
         children: [
           const SizedBox(height: 20),
+
+          // Avatar
           Stack(
             children: [
               CircleAvatar(
@@ -188,7 +194,7 @@ class _EditProfileScreenState extends State<EditProfileScreen> {
                   size: 40,
                   color: AppColors.primary,
                 )),
-                ),
+              ),
               Positioned(
                 bottom: 0,
                 right: 0,
@@ -197,7 +203,7 @@ class _EditProfileScreenState extends State<EditProfileScreen> {
                   child: CircleAvatar(
                     radius: 20,
                     backgroundColor: AppColors.primary,
-                    child:  Icon(
+                    child: Icon(
                       Icons.camera_alt_rounded,
                       size: 15,
                       color: AppColors.background,
@@ -210,17 +216,34 @@ class _EditProfileScreenState extends State<EditProfileScreen> {
 
           const SizedBox(height: 32),
 
-          // Editable fields
+          // ✅ Form wraps the fields
           Expanded(
-            child: ListView(
-              padding: const EdgeInsets.symmetric(horizontal: 20),
-              children: [
-                EditField(label: 'NAME', controller: _nameController),
-                EditField(
-                  label: 'STUDENT ID',
-                  controller: _studentIdController,
-                ),
-              ],
+            child: Form(
+              key: _formKey,
+              child: ListView(
+                padding: const EdgeInsets.symmetric(horizontal: 20),
+                children: [
+                  EditField(
+                    label:      'NAME',
+                    controller: _nameController,
+                    validator:  AuthValidator.fullName,
+                  ),
+                  EditField(
+                    label:      'STUDENT ID',
+                    controller: _studentIdController,
+                    validator:  AuthValidator.studentId,
+                  ),
+                  EditField(
+                    label:      'PASSWORD',
+                    controller: _studentPassword,
+                    hint:       'Leave empty to keep current password',
+                    obscure:    true,
+                    validator:  (value) => value!.isNotEmpty
+                        ? AuthValidator.password(value)
+                        : null,
+                  ),
+                ],
+              ),
             ),
           ),
 
@@ -252,7 +275,6 @@ class _EditProfileScreenState extends State<EditProfileScreen> {
 
                 const SizedBox(width: 12),
 
-                // Save Changes
                 Expanded(
                   child: ElevatedButton(
                     onPressed: _saving ? null : _saveChanges,
