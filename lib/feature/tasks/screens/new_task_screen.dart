@@ -65,7 +65,7 @@ class _NewTaskScreenState extends State<NewTaskScreen> {
     final picked = await showDatePicker(
       context: context,
       initialDate: _dueDate,
-      firstDate: DateTime.now().subtract(const Duration(days: 365)),
+      firstDate: DateTime.now(),
       lastDate: DateTime(2100),
       builder: (ctx, child) => Theme(
         data: Theme.of(ctx).copyWith(
@@ -212,7 +212,7 @@ class _NewTaskScreenState extends State<NewTaskScreen> {
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                Label('TASK TITLE', required: true),
+                Label('Task Title', required: true),
                 Field(
                   controller: _titleCtrl,
                   hint: 'e.g., Source velvet cushions...',
@@ -221,7 +221,7 @@ class _NewTaskScreenState extends State<NewTaskScreen> {
 
                 const SizedBox(height: 28),
 
-                Label('DESCRIPTION'),
+                Label('Description'),
                 Field(
                   controller: _descCtrl,
                   hint: 'Add notes, material pairings...',
@@ -230,7 +230,7 @@ class _NewTaskScreenState extends State<NewTaskScreen> {
 
                 const SizedBox(height: 28),
 
-                Label('DUE DATE', required: true),
+                Label('Due Date', required: true),
                 const SizedBox(height: 8),
                 FormField<String>(
                   validator: (_) => TaskValidator.dueDate(_formattedDate),
@@ -286,7 +286,7 @@ class _NewTaskScreenState extends State<NewTaskScreen> {
 
                 const SizedBox(height: 28),
 
-                Label('PRIORITY LEVEL', required: true),
+                Label('Priority Level', required: true),
                 const SizedBox(height: 12),
                 PrioritySelector(
                   initialValue: _priority,

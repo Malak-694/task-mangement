@@ -95,18 +95,51 @@ class _ProfileScreenState extends State<ProfileScreen> {
           : Column(
         children: [
           const SizedBox(height: 20),
+          // In ProfileScreen build() method:
+
           CircleAvatar(
             radius: 60,
             backgroundColor: AppColors.primary.withOpacity(0.15),
-            child:  _avatarPath!= null && File(_avatarPath!).existsSync()
+            child: _avatarPath != null
+                ? (_avatarPath!.startsWith('http')
                 ? ClipOval(
-                  child: Image.file(
-                                File(_avatarPath!),
-                                width: 120,
-                                height: 120,
-                                fit: BoxFit.cover,
-                              ),
-                )
+              child: Image.network(
+                _avatarPath!,
+                width: 120,
+                height: 120,
+                fit: BoxFit.cover,
+                loadingBuilder: (context, child, loadingProgress) {
+                  if (loadingProgress == null) return child;
+                  return const Center(
+                    child: CircularProgressIndicator(
+                      color: AppColors.primary,
+                      strokeWidth: 2,
+                    ),
+                  );
+                },
+                errorBuilder: (context, error, stackTrace) {
+                  debugPrint(' Error loading avatar: $error');
+                  return const Icon(
+                    Icons.person_outline_rounded,
+                    size: 50,
+                    color: AppColors.primary,
+                  );
+                },
+              ),
+            ) : File(_avatarPath!).existsSync()
+                ? ClipOval(
+              child: Image.file(
+                File(_avatarPath!),
+                width: 120,
+                height: 120,
+                fit: BoxFit.cover,
+              ),
+            )
+                : const Icon(
+              Icons.person_outline_rounded,
+              size: 50,
+              color: AppColors.primary,
+            ))
                 : const Icon(
               Icons.person_outline_rounded,
               size: 50,

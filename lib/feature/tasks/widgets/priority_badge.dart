@@ -25,10 +25,10 @@ class PriorityBadge extends StatelessWidget {
         Text(
           label.toUpperCase(),
           style: TextStyle(
-            fontSize: 11,
+            fontSize: 12,
             fontWeight: FontWeight.w600,
             color: AppColors.button,
-            letterSpacing: 0.6,
+
           ),
         ),
       ],

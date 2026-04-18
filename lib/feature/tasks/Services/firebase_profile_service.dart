@@ -2,8 +2,9 @@ import 'dart:io';
 
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firebase_auth/firebase_auth.dart';
-import 'package:firebase_storage/firebase_storage.dart';
 import 'package:flutter/foundation.dart';
+
+import '../../../core/imagekit/imagekit_service.dart'; // ← NEW
 
 class FirebaseProfileService {
   FirebaseProfileService._();
@@ -11,23 +12,21 @@ class FirebaseProfileService {
 
   static const String _collection = 'user-student';
 
-  final FirebaseFirestore _db      = FirebaseFirestore.instance;
-  final FirebaseStorage   _storage = FirebaseStorage.instance;
-  final FirebaseAuth      _auth    = FirebaseAuth.instance;
+  final FirebaseFirestore _db   = FirebaseFirestore.instance;
+  final FirebaseAuth      _auth = FirebaseAuth.instance;
 
   Future<String?> saveAvatarImage(File imageFile, String email) async {
     try {
       final uid = _auth.currentUser?.uid;
       if (uid == null) return null;
 
-      final ref = _storage.ref().child('avatars').child('$uid.jpg');
-
-      await ref.putFile(
-        imageFile,
-        SettableMetadata(contentType: 'image/jpeg'),
+      final url = await ImageKitService.instance.uploadImage(
+        imageFile: imageFile,
+        fileName:  '$uid.jpg',
+        folder:    'avatars',
       );
 
-      return await ref.getDownloadURL();
+      return url;
     } catch (e, st) {
       debugPrint('FirebaseProfileService.saveAvatarImage failed: $e\n$st');
       return null;
