@@ -1,11 +1,14 @@
+// lib/feature/tasks/screens/edit_screen.dart
+
 import 'dart:io';
 
 import 'package:flutter/material.dart';
 import 'package:image_picker/image_picker.dart';
-import 'package:mobile_assignment/core/session_manager.dart';
+import 'package:provider/provider.dart';
+
 import 'package:mobile_assignment/core/style/colors.dart';
 import 'package:mobile_assignment/core/validator/auth_validator.dart';
-import 'package:mobile_assignment/feature/tasks/Services/profile_service.dart';
+import 'package:mobile_assignment/feature/tasks/providers/profile_provider.dart';
 import 'package:mobile_assignment/feature/tasks/widgets/edit_field.dart';
 
 class EditProfileScreen extends StatefulWidget {
@@ -18,77 +21,51 @@ class EditProfileScreen extends StatefulWidget {
 
 class _EditProfileScreenState extends State<EditProfileScreen> {
   final _formKey            = GlobalKey<FormState>();
-  final _nameController      = TextEditingController();
+  final _nameController     = TextEditingController();
   final _studentIdController = TextEditingController();
-  final _studentPassword     = TextEditingController();
+  final _passwordController = TextEditingController();
 
-  bool    _loading = true;
-  bool    _saving  = false;
-  String? _email;
-  File?   _pickedImage;
-  String? _avatarPath;
+  // _pickedImage is UI-only state → stays local, not in provider
+  File? _pickedImage;
 
   @override
   void initState() {
     super.initState();
-    _loadUser();
+    // Pre-fill from provider (already loaded by ProfileScreen)
+    final profile = context.read<ProfileProvider>();
+    _nameController.text      = profile.name      ?? '';
+    _studentIdController.text = profile.studentId ?? '';
   }
 
-  Future<void> _loadUser() async {
-    _email = SessionManager.instance.currentUserEmail;
-    if (_email != null) {
-      final user = await ProfileService.instance.getUserByEmail(_email!);
-      if (user != null) {
-        _nameController.text      = user['name']       ?? '';
-        _studentIdController.text = user['student_id'] ?? '';
-        _studentPassword.text     = '';
-        setState(() {
-          _avatarPath = user['avatar_path'];
-          _loading    = false;
-        });
-      }
-    }
-    setState(() => _loading = false);
+  @override
+  void dispose() {
+    _nameController.dispose();
+    _studentIdController.dispose();
+    _passwordController.dispose();
+    super.dispose();
   }
 
   Future<void> _saveChanges() async {
     if (!_formKey.currentState!.validate()) return;
 
-    if (_email == null) return;
-    setState(() => _saving = true);
-
-    final success = await ProfileService.instance.updateUser(
-      email:      _email!,
+    final success = await context.read<ProfileProvider>().updateUser(
       name:       _nameController.text.trim(),
       studentId:  _studentIdController.text.trim(),
-      password:   _studentPassword.text.trim(),
+      password:   _passwordController.text.trim(),
       avatarFile: _pickedImage,
     );
 
-    setState(() => _saving = false);
     if (!mounted) return;
 
-    if (success) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(
-          content: Text('Profile updated successfully'),
-          backgroundColor: AppColors.primary,
-        ),
-      );
-      Navigator.pop(context, true);
-    } else {
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(
-          content: Text('Failed to update profile'),
-          backgroundColor: AppColors.button,
-        ),
-      );
-    }
+    ScaffoldMessenger.of(context).showSnackBar(SnackBar(
+      content: Text(success ? 'Profile updated successfully' : 'Failed to update profile'),
+      backgroundColor: success ? AppColors.primary : AppColors.button,
+    ));
+
+    if (success) Navigator.pop(context, true);
   }
 
   Future<void> _pickImage() async {
-    final picker = ImagePicker();
-
     final source = await showModalBottomSheet<ImageSource>(
       context: context,
       shape: const RoundedRectangleBorder(
@@ -115,27 +92,15 @@ class _EditProfileScreenState extends State<EditProfileScreen> {
 
     if (source == null) return;
 
-    final picked = await picker.pickImage(
-      source: source,
-      imageQuality: 80,
-      maxWidth: 512,
-    );
-
-    if (picked != null) {
-      setState(() => _pickedImage = File(picked.path));
-    }
-  }
-
-  @override
-  void dispose() {
-    _nameController.dispose();
-    _studentIdController.dispose();
-    _studentPassword.dispose();
-    super.dispose();
+    final picked = await ImagePicker().pickImage(source: source, imageQuality: 80, maxWidth: 512);
+    if (picked != null) setState(() => _pickedImage = File(picked.path));
   }
 
   @override
   Widget build(BuildContext context) {
+    // watch only for isSaving + avatarPath
+    final profile = context.watch<ProfileProvider>();
+
     return Scaffold(
       backgroundColor: AppColors.background,
       appBar: AppBar(
@@ -143,71 +108,35 @@ class _EditProfileScreenState extends State<EditProfileScreen> {
         elevation: 0,
         leading: TextButton(
           onPressed: () => Navigator.pop(context),
-          child: const Text(
-            '← Back',
-            style: TextStyle(color: AppColors.primary, fontSize: 14),
-          ),
+          child: const Text('← Back', style: TextStyle(color: AppColors.primary, fontSize: 14)),
         ),
         leadingWidth: 80,
-        title: const Text(
-          'Profile',
-          style: TextStyle(
-            color: AppColors.text,
-            fontSize: 17,
-            fontWeight: FontWeight.w500,
-          ),
-        ),
         centerTitle: true,
+        title: const Text(
+          'Edit Profile',
+          style: TextStyle(color: AppColors.text, fontSize: 17, fontWeight: FontWeight.w500),
+        ),
       ),
-      body: _loading
-          ? const Center(child: CircularProgressIndicator(color: AppColors.primary))
-          : Column(
+      body: Column(
         children: [
           const SizedBox(height: 20),
 
-          // Avatar
+          // ── Avatar ──────────────────────────────────────────────────────
           Stack(
             children: [
               CircleAvatar(
                 radius: 60,
                 backgroundColor: AppColors.primary.withOpacity(0.15),
-                child: _pickedImage != null
-                    ? ClipOval(
-                  child: Image.file(
-                    _pickedImage!,
-                    width: 120,
-                    height: 120,
-                    fit: BoxFit.cover,
-                  ),
-                )
-                    : (_avatarPath != null && File(_avatarPath!).existsSync()
-                    ? ClipOval(
-                  child: Image.file(
-                    File(_avatarPath!),
-                    width: 120,
-                    height: 120,
-                    fit: BoxFit.cover,
-                  ),
-                )
-                    : const Icon(
-                  Icons.person_outline_rounded,
-                  size: 40,
-                  color: AppColors.primary,
-                )),
+                child: _buildAvatar(profile.avatarPath),
               ),
               Positioned(
-                bottom: 0,
-                right: 0,
+                bottom: 0, right: 0,
                 child: GestureDetector(
                   onTap: _pickImage,
                   child: CircleAvatar(
                     radius: 20,
                     backgroundColor: AppColors.primary,
-                    child: Icon(
-                      Icons.camera_alt_rounded,
-                      size: 15,
-                      color: AppColors.background,
-                    ),
+                    child: Icon(Icons.camera_alt_rounded, size: 15, color: AppColors.background),
                   ),
                 ),
               ),
@@ -216,38 +145,28 @@ class _EditProfileScreenState extends State<EditProfileScreen> {
 
           const SizedBox(height: 32),
 
-          // ✅ Form wraps the fields
+          // ── Form ────────────────────────────────────────────────────────
           Expanded(
             child: Form(
               key: _formKey,
               child: ListView(
                 padding: const EdgeInsets.symmetric(horizontal: 20),
                 children: [
-                  EditField(
-                    label:      'NAME',
-                    controller: _nameController,
-                    validator:  AuthValidator.fullName,
-                  ),
-                  EditField(
-                    label:      'STUDENT ID',
-                    controller: _studentIdController,
-                    validator:  AuthValidator.studentId,
-                  ),
+                  EditField(label: 'NAME',       controller: _nameController,      validator: AuthValidator.fullName),
+                  EditField(label: 'STUDENT ID', controller: _studentIdController, validator: AuthValidator.studentId),
                   EditField(
                     label:      'PASSWORD',
-                    controller: _studentPassword,
+                    controller: _passwordController,
                     hint:       'Leave empty to keep current password',
                     obscure:    true,
-                    validator:  (value) => value!.isNotEmpty
-                        ? AuthValidator.password(value)
-                        : null,
+                    validator:  (v) => v != null && v.isNotEmpty ? AuthValidator.password(v) : null,
                   ),
                 ],
               ),
             ),
           ),
 
-          // Buttons
+          // ── Buttons ─────────────────────────────────────────────────────
           Padding(
             padding: const EdgeInsets.fromLTRB(20, 0, 20, 36),
             child: Row(
@@ -258,26 +177,16 @@ class _EditProfileScreenState extends State<EditProfileScreen> {
                     style: OutlinedButton.styleFrom(
                       padding: const EdgeInsets.symmetric(vertical: 16),
                       shape: const StadiumBorder(),
-                      side: BorderSide(
-                        color: AppColors.primary.withOpacity(0.5),
-                      ),
+                      side: BorderSide(color: AppColors.primary.withOpacity(0.5)),
                     ),
-                    child: const Text(
-                      'Cancel',
-                      style: TextStyle(
-                        color: AppColors.text,
-                        fontSize: 15,
-                        fontWeight: FontWeight.w500,
-                      ),
-                    ),
+                    child: const Text('Cancel',
+                        style: TextStyle(color: AppColors.text, fontSize: 15, fontWeight: FontWeight.w500)),
                   ),
                 ),
-
                 const SizedBox(width: 12),
-
                 Expanded(
                   child: ElevatedButton(
-                    onPressed: _saving ? null : _saveChanges,
+                    onPressed: profile.isSaving ? null : _saveChanges,
                     style: ElevatedButton.styleFrom(
                       backgroundColor: AppColors.primary,
                       foregroundColor: Colors.white,
@@ -285,22 +194,12 @@ class _EditProfileScreenState extends State<EditProfileScreen> {
                       shape: const StadiumBorder(),
                       elevation: 0,
                     ),
-                    child: _saving
+                    child: profile.isSaving
                         ? const SizedBox(
-                      height: 18,
-                      width: 18,
-                      child: CircularProgressIndicator(
-                        color: Colors.white,
-                        strokeWidth: 2,
-                      ),
-                    )
-                        : const Text(
-                      'Save Changes',
-                      style: TextStyle(
-                        fontSize: 15,
-                        fontWeight: FontWeight.w500,
-                      ),
-                    ),
+                        height: 18, width: 18,
+                        child: CircularProgressIndicator(color: Colors.white, strokeWidth: 2))
+                        : const Text('Save Changes',
+                        style: TextStyle(fontSize: 15, fontWeight: FontWeight.w500)),
                   ),
                 ),
               ],
@@ -309,5 +208,16 @@ class _EditProfileScreenState extends State<EditProfileScreen> {
         ],
       ),
     );
+  }
+
+  Widget _buildAvatar(String? savedPath) {
+    // Show newly picked image first, fall back to saved path
+    if (_pickedImage != null) {
+      return ClipOval(child: Image.file(_pickedImage!, width: 120, height: 120, fit: BoxFit.cover));
+    }
+    if (savedPath != null && File(savedPath).existsSync()) {
+      return ClipOval(child: Image.file(File(savedPath), width: 120, height: 120, fit: BoxFit.cover));
+    }
+    return const Icon(Icons.person_outline_rounded, size: 40, color: AppColors.primary);
   }
 }

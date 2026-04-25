@@ -1,19 +1,17 @@
-import 'package:firebase_auth/firebase_auth.dart';
+// lib/feature/auth/screens/login_screen.dart
+
 import 'package:flutter/material.dart';
-import 'package:mobile_assignment/core/session_manager.dart';
-import 'package:mobile_assignment/feature/auth/models/auth_result.dart';
-import 'package:mobile_assignment/feature/auth/widgets/app_text_field.dart';
-import 'package:mobile_assignment/feature/tasks/Services/task_reprositry.dart';
+import 'package:provider/provider.dart';
 
 import '../../../core/style/colors.dart';
 import '../../../core/validator/auth_validator.dart';
-import '../services/hybrid_auth_service.dart';
+import '../providers/auth_provider.dart';
+import '../widgets/app_text_field.dart';
 import '../../tasks/screens/task_screen.dart';
 import 'signup_screen.dart';
 
 class LoginScreen extends StatefulWidget {
   const LoginScreen({super.key});
-
   static const String routeName = '/login';
 
   @override
@@ -21,62 +19,38 @@ class LoginScreen extends StatefulWidget {
 }
 
 class _LoginScreenState extends State<LoginScreen> {
-  final GlobalKey<FormState> _formKey = GlobalKey<FormState>();
-  final TextEditingController _emailController = TextEditingController();
-  final TextEditingController _passwordController = TextEditingController();
-  bool _isLoading = false;
+  final _formKey         = GlobalKey<FormState>();
+  final _emailCtrl       = TextEditingController();
+  final _passwordCtrl    = TextEditingController();
 
   @override
   void dispose() {
-    _emailController.dispose();
-    _passwordController.dispose();
+    _emailCtrl.dispose();
+    _passwordCtrl.dispose();
     super.dispose();
   }
 
   Future<void> _login() async {
-    final FormState? form = _formKey.currentState;
-    if (form == null || !form.validate()) {
-      return;
-    }
+    if (!_formKey.currentState!.validate()) return;
 
-    setState(() {
-      _isLoading = true;
-    });
-
-    final result = await HybridAuthService.instance.login(
-      email: _emailController.text.trim(),
-      password: _passwordController.text,
+    final result = await context.read<AuthProvider>().login(
+      email:    _emailCtrl.text.trim(),
+      password: _passwordCtrl.text,
     );
 
-    if (!mounted) {
-      return;
-    }
+    if (!mounted) return;
 
-    if (result.status == AuthStatus.success) {
-      SessionManager.instance.setUser(_emailController.text.trim());
-      final user = FirebaseAuth.instance.currentUser;
-      if (user != null) {
-        TaskRepository.instance.setUser(user.uid);
-      }
+    ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(result.message)));
+
+    if (result.isSuccess) {
       Navigator.pushReplacementNamed(context, TaskScreen.routeName);
     }
-    setState(() {
-      _isLoading = false;
-    });
-
-    ScaffoldMessenger.of(
-      context,
-    ).showSnackBar(SnackBar(content: Text(result.message)));
-
-    if (!result.isSuccess) {
-      return;
-    }
-
-    Navigator.pushReplacementNamed(context, TaskScreen.routeName);
   }
 
   @override
   Widget build(BuildContext context) {
+    final isLoading = context.watch<AuthProvider>().isLoading;
+
     return Scaffold(
       backgroundColor: AppColors.background,
       appBar: AppBar(
@@ -92,64 +66,47 @@ class _LoginScreenState extends State<LoginScreen> {
             padding: const EdgeInsets.all(20),
             children: [
               const SizedBox(height: 10),
-              const Text(
-                'Welcome back',
-                style: TextStyle(
-                  fontSize: 26,
-                  fontWeight: FontWeight.bold,
-                  color: AppColors.text,
-                ),
-              ),
+              const Text('Welcome back',
+                  style: TextStyle(fontSize: 26, fontWeight: FontWeight.bold, color: AppColors.text)),
               const SizedBox(height: 8),
-              const Text(
-                'Log in with your university credentials',
-                style: TextStyle(color: Colors.grey),
-              ),
+              const Text('Log in with your university credentials',
+                  style: TextStyle(color: Colors.grey)),
               const SizedBox(height: 30),
+
               AppTextField(
-                controller: _emailController,
+                controller: _emailCtrl,
                 label: 'University Email',
                 hint: '12345678@stud.fci-cu.edu.eg',
                 keyboardType: TextInputType.emailAddress,
-                validator: (String? value) =>
-                    AuthValidator.required(value, 'Email'),
+                validator: (v) => AuthValidator.required(v, 'Email'),
               ),
               AppTextField(
-                controller: _passwordController,
+                controller: _passwordCtrl,
                 label: 'Password',
                 obscure: true,
-                validator: (String? value) =>
-                    AuthValidator.required(value, 'Password'),
+                validator: (v) => AuthValidator.required(v, 'Password'),
               ),
+
               const SizedBox(height: 10),
               SizedBox(
                 height: 50,
                 child: ElevatedButton(
                   style: ElevatedButton.styleFrom(
                     backgroundColor: AppColors.button,
-                    shape: RoundedRectangleBorder(
-                      borderRadius: BorderRadius.circular(12),
-                    ),
+                    shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
                   ),
-                  onPressed: _isLoading ? null : _login,
-                  child: _isLoading
+                  onPressed: isLoading ? null : _login,
+                  child: isLoading
                       ? const CircularProgressIndicator(color: Colors.white)
-                      : const Text(
-                          'Log In',
-                          style: TextStyle(
-                            color: AppColors.buttonText,
-                            fontSize: 16,
-                            fontWeight: FontWeight.bold,
-                          ),
-                        ),
+                      : const Text('Log In',
+                      style: TextStyle(color: AppColors.buttonText, fontSize: 16, fontWeight: FontWeight.bold)),
                 ),
               ),
+
               TextButton(
-                onPressed: _isLoading
+                onPressed: isLoading
                     ? null
-                    : () {
-                        Navigator.pushNamed(context, SignupScreen.routeName);
-                      },
+                    : () => Navigator.pushNamed(context, SignupScreen.routeName),
                 child: const Text('No account? Create one'),
               ),
             ],
