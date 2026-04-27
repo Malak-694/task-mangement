@@ -11,6 +11,7 @@ class Task {
   final String priority;
   final DateTime createdAt;
   final bool isCompleted;
+  final bool isFavorite;
 
   Task({
     this.id,
@@ -21,6 +22,7 @@ class Task {
     required this.priority,
     DateTime? createdAt,
     this.isCompleted = false,
+    this.isFavorite = false,
   }) : createdAt = createdAt ?? DateTime.now();
 
   Map<String, dynamic> toMap() => {
@@ -32,6 +34,7 @@ class Task {
     'priority': priority,
     'created_at': createdAt.toIso8601String(),
     'is_completed': isCompleted ? 1 : 0,
+    'is_favorite': isFavorite ? 1 : 0,
   };
 
   factory Task.fromMap(Map<String, dynamic> map) => Task(
@@ -43,6 +46,7 @@ class Task {
     priority: map['priority'],
     createdAt: DateTime.parse(map['created_at']),
     isCompleted: map['is_completed'] == 1,
+    isFavorite: map['is_favorite'] == 1,
   );
 
   Map<String, dynamic> toFirestore() => {
@@ -52,6 +56,7 @@ class Task {
     'priority': priority,
     'created_at': Timestamp.fromDate(createdAt),
     'is_completed': isCompleted,
+    'is_favorite': isFavorite,
   };
 
   factory Task.fromFirestore(DocumentSnapshot doc) {
@@ -64,6 +69,7 @@ class Task {
       priority: map['priority'],
       createdAt: (map['created_at'] as Timestamp).toDate(),
       isCompleted: map['is_completed'] ?? false,
+      isFavorite: map['is_favorite'] ?? false,
     );
   }
 
@@ -76,15 +82,16 @@ class Task {
     String? priority,
     DateTime? createdAt,
     bool? isCompleted,
-  }) =>
-      Task(
-        id: id ?? this.id,
-        firebaseId: firebaseId ?? this.firebaseId,
-        title: title ?? this.title,
-        description: description ?? this.description,
-        dueDate: dueDate ?? this.dueDate,
-        priority: priority ?? this.priority,
-        createdAt: createdAt ?? this.createdAt,
-        isCompleted: isCompleted ?? this.isCompleted,
-      );
+    bool? isFavorite,
+  }) => Task(
+    id: id ?? this.id,
+    firebaseId: firebaseId ?? this.firebaseId,
+    title: title ?? this.title,
+    description: description ?? this.description,
+    dueDate: dueDate ?? this.dueDate,
+    priority: priority ?? this.priority,
+    createdAt: createdAt ?? this.createdAt,
+    isCompleted: isCompleted ?? this.isCompleted,
+    isFavorite: isFavorite ?? this.isFavorite,
+  );
 }

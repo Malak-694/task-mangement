@@ -1,5 +1,3 @@
-
-
 // lib/feature/tasks/data/local_task_service.dart
 
 import 'package:sqflite/sqflite.dart';
@@ -7,7 +5,6 @@ import 'package:path/path.dart';
 import '../models/task_model.dart';
 
 class LocalTaskService {
-
   LocalTaskService._();
   static final LocalTaskService instance = LocalTaskService._();
 
@@ -24,7 +21,7 @@ class LocalTaskService {
 
     _database = await openDatabase(
       fullPath,
-      version: 2,
+      version: 3,
       onCreate: _onCreate,
       onUpgrade: _onUpgrade,
       onConfigure: (db) async {
@@ -44,13 +41,23 @@ class LocalTaskService {
         due_date TEXT NOT NULL,
         priority TEXT NOT NULL,
         created_at TEXT NOT NULL,
-        is_completed INTEGER NOT NULL DEFAULT 0
+        is_completed INTEGER NOT NULL DEFAULT 0,
+        is_favorite INTEGER NOT NULL DEFAULT 0
       )
     ''');
 
-    await db.execute('CREATE INDEX idx_tasks_due_date ON $_tasksTable(due_date)');
-    await db.execute('CREATE INDEX idx_tasks_priority ON $_tasksTable(priority)');
-    await db.execute('CREATE INDEX idx_tasks_completed ON $_tasksTable(is_completed)');
+    await db.execute(
+      'CREATE INDEX idx_tasks_due_date ON $_tasksTable(due_date)',
+    );
+    await db.execute(
+      'CREATE INDEX idx_tasks_priority ON $_tasksTable(priority)',
+    );
+    await db.execute(
+      'CREATE INDEX idx_tasks_completed ON $_tasksTable(is_completed)',
+    );
+    await db.execute(
+      'CREATE INDEX idx_tasks_favorite ON $_tasksTable(is_favorite)',
+    );
   }
 
   Future<void> _onUpgrade(Database db, int oldVersion, int newVersion) async {
@@ -80,22 +87,24 @@ class LocalTaskService {
       await db.execute('DROP TABLE $_tasksTable');
       await db.execute('ALTER TABLE ${_tasksTable}_new RENAME TO $_tasksTable');
     }
+    if (oldVersion < 3) {
+      await db.execute(
+        'ALTER TABLE $_tasksTable ADD COLUMN is_favorite INTEGER NOT NULL DEFAULT 0',
+      );
+      await db.execute(
+        'CREATE INDEX idx_tasks_favorite ON $_tasksTable(is_favorite)',
+      );
+    }
   }
-
 
   Future<int> insertTask(Task task) async {
     final db = await _ensureDb();
     return await db.insert(_tasksTable, task.toMap());
   }
 
-
   Future<Task?> getTaskById(int id) async {
     final db = await _ensureDb();
-    final maps = await db.query(
-      _tasksTable,
-      where: 'id = ?',
-      whereArgs: [id],
-    );
+    final maps = await db.query(_tasksTable, where: 'id = ?', whereArgs: [id]);
     if (maps.isEmpty) return null;
     return Task.fromMap(maps.first);
   }
@@ -111,11 +120,7 @@ class LocalTaskService {
         ? '$sortBy ${ascending ? 'ASC' : 'DESC'}'
         : 'due_date ASC';
 
-    final maps = await db.query(
-      _tasksTable,
-      where: where,
-      orderBy: orderBy,
-    );
+    final maps = await db.query(_tasksTable, where: where, orderBy: orderBy);
     return List.generate(maps.length, (i) => Task.fromMap(maps[i]));
   }
 
@@ -133,14 +138,16 @@ class LocalTaskService {
   Future<List<Task>> getOverdueTasks() async {
     final db = await _ensureDb();
     final now = DateTime.now().toIso8601String();
-    final maps = await db.rawQuery('''
+    final maps = await db.rawQuery(
+      '''
       SELECT * FROM $_tasksTable
       WHERE due_date < ? AND is_completed = 0
       ORDER BY due_date ASC
-    ''', [now]);
+    ''',
+      [now],
+    );
     return List.generate(maps.length, (i) => Task.fromMap(maps[i]));
   }
-
 
   Future<int> updateTask(Task task) async {
     final db = await _ensureDb();
@@ -163,13 +170,19 @@ class LocalTaskService {
     );
   }
 
-  Future<int> deleteTask(int id) async {
+  Future<int> markFavorite(int id, bool favorite) async {
     final db = await _ensureDb();
-    return await db.delete(
+    return await db.update(
       _tasksTable,
+      {'is_favorite': favorite ? 1 : 0},
       where: 'id = ?',
       whereArgs: [id],
     );
+  }
+
+  Future<int> deleteTask(int id) async {
+    final db = await _ensureDb();
+    return await db.delete(_tasksTable, where: 'id = ?', whereArgs: [id]);
   }
 
   Future<int> deleteCompletedTasks() async {
@@ -202,6 +215,4 @@ class LocalTaskService {
     await db.close();
     _database = null;
   }
-
-
 }

@@ -25,9 +25,10 @@ class _NewTaskScreenState extends State<NewTaskScreen> {
   late TextEditingController _titleCtrl;
   late TextEditingController _descCtrl;
 
-  DateTime _dueDate  = DateTime.now();
-  String   _priority = 'medium';
-  bool     _isSaving = false;
+  DateTime _dueDate = DateTime.now();
+  String _priority = 'medium';
+  bool _isFavorite = false;
+  bool _isSaving = false;
 
   bool get _isEditing => widget.taskToEdit != null;
 
@@ -36,10 +37,11 @@ class _NewTaskScreenState extends State<NewTaskScreen> {
     super.initState();
     final t = widget.taskToEdit;
     _titleCtrl = TextEditingController(text: t?.title ?? '');
-    _descCtrl  = TextEditingController(text: t?.description ?? '');
+    _descCtrl = TextEditingController(text: t?.description ?? '');
     if (t != null) {
-      _dueDate  = t.dueDate;
+      _dueDate = t.dueDate;
       _priority = t.priority;
+      _isFavorite = t.isFavorite;
     }
   }
 
@@ -80,34 +82,48 @@ class _NewTaskScreenState extends State<NewTaskScreen> {
     setState(() => _isSaving = true);
 
     final task = Task(
-      id:          widget.taskToEdit?.id,
-      firebaseId:  widget.taskToEdit?.firebaseId,
-      title:       _titleCtrl.text.trim(),
-      description: _descCtrl.text.trim().isNotEmpty ? _descCtrl.text.trim() : null,
-      dueDate:     _dueDate,
-      priority:    _priority,
-      createdAt:   widget.taskToEdit?.createdAt,
+      id: widget.taskToEdit?.id,
+      firebaseId: widget.taskToEdit?.firebaseId,
+      title: _titleCtrl.text.trim(),
+      description: _descCtrl.text.trim().isNotEmpty
+          ? _descCtrl.text.trim()
+          : null,
+      dueDate: _dueDate,
+      priority: _priority,
+      createdAt: widget.taskToEdit?.createdAt,
+      isCompleted: widget.taskToEdit?.isCompleted ?? false,
+      isFavorite: _isFavorite,
     );
 
     try {
       final provider = context.read<TaskProvider>();
-      _isEditing ? await provider.updateTask(task) : await provider.addTask(task);
+      _isEditing
+          ? await provider.updateTask(task)
+          : await provider.addTask(task);
 
       if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(SnackBar(
-          content: Text(_isEditing ? 'Task updated successfully!' : 'Task saved successfully!'),
-          backgroundColor: Colors.green.shade700,
-          behavior: SnackBarBehavior.floating,
-        ));
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text(
+              _isEditing
+                  ? 'Task updated successfully!'
+                  : 'Task saved successfully!',
+            ),
+            backgroundColor: Colors.green.shade700,
+            behavior: SnackBarBehavior.floating,
+          ),
+        );
         Navigator.pop(context);
       }
     } catch (e) {
       if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(SnackBar(
-          content: Text('Failed: $e'),
-          backgroundColor: AppColors.button,
-          behavior: SnackBarBehavior.floating,
-        ));
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text('Failed: $e'),
+            backgroundColor: AppColors.button,
+            behavior: SnackBarBehavior.floating,
+          ),
+        );
       }
     } finally {
       if (mounted) setState(() => _isSaving = false);
@@ -124,7 +140,10 @@ class _NewTaskScreenState extends State<NewTaskScreen> {
         title: const Text('Delete Task?'),
         content: const Text('This action cannot be undone.'),
         actions: [
-          TextButton(onPressed: () => Navigator.pop(ctx, false), child: const Text('Cancel')),
+          TextButton(
+            onPressed: () => Navigator.pop(ctx, false),
+            child: const Text('Cancel'),
+          ),
           TextButton(
             onPressed: () => Navigator.pop(ctx, true),
             child: Text('Delete', style: TextStyle(color: AppColors.button)),
@@ -134,7 +153,9 @@ class _NewTaskScreenState extends State<NewTaskScreen> {
     );
 
     if (confirmed == true && mounted) {
-      await context.read<TaskProvider>().deleteTask(task); // ✅ fixed: passes Task object
+      await context.read<TaskProvider>().deleteTask(
+        task,
+      ); // ✅ fixed: passes Task object
       if (mounted) Navigator.pop(context);
     }
   }
@@ -153,14 +174,23 @@ class _NewTaskScreenState extends State<NewTaskScreen> {
         ),
         title: Text(
           _isEditing ? 'Edit Task' : 'New Task',
-          style: const TextStyle(color: AppColors.text, fontSize: 17, fontWeight: FontWeight.w600),
+          style: const TextStyle(
+            color: AppColors.text,
+            fontSize: 17,
+            fontWeight: FontWeight.w600,
+          ),
         ),
         actions: _isEditing
-            ? [IconButton(
-          icon: const Icon(Icons.delete_outline, color: AppColors.button),
-          onPressed: _deleteTask,
-          tooltip: 'Delete Task',
-        )]
+            ? [
+                IconButton(
+                  icon: const Icon(
+                    Icons.delete_outline,
+                    color: AppColors.button,
+                  ),
+                  onPressed: _deleteTask,
+                  tooltip: 'Delete Task',
+                ),
+              ]
             : null,
       ),
       body: GestureDetector(
@@ -173,11 +203,19 @@ class _NewTaskScreenState extends State<NewTaskScreen> {
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
                 Label('Task Title', required: true),
-                Field(controller: _titleCtrl, hint: 'e.g., Source velvet cushions...', validator: TaskValidator.title),
+                Field(
+                  controller: _titleCtrl,
+                  hint: 'e.g., Source velvet cushions...',
+                  validator: TaskValidator.title,
+                ),
 
                 const SizedBox(height: 28),
                 Label('Description'),
-                Field(controller: _descCtrl, hint: 'Add notes, material pairings...', maxLines: 4),
+                Field(
+                  controller: _descCtrl,
+                  hint: 'Add notes, material pairings...',
+                  maxLines: 4,
+                ),
 
                 const SizedBox(height: 28),
                 Label('Due Date', required: true),
@@ -190,25 +228,54 @@ class _NewTaskScreenState extends State<NewTaskScreen> {
                       GestureDetector(
                         onTap: _pickDate,
                         child: Container(
-                          padding: const EdgeInsets.symmetric(vertical: 10, horizontal: 12),
+                          padding: const EdgeInsets.symmetric(
+                            vertical: 10,
+                            horizontal: 12,
+                          ),
                           decoration: BoxDecoration(
                             border: Border.all(
-                              color: state.hasError ? AppColors.button : AppColors.text.withOpacity(0.15),
+                              color: state.hasError
+                                  ? AppColors.button
+                                  : AppColors.text.withOpacity(0.15),
                             ),
                             borderRadius: BorderRadius.circular(10),
                           ),
-                          child: Row(children: [
-                            Icon(Icons.calendar_today_outlined, size: 16, color: AppColors.text.withOpacity(0.45)),
-                            const SizedBox(width: 10),
-                            Expanded(child: Text(_formattedDate, style: const TextStyle(fontSize: 15, color: AppColors.text))),
-                            Icon(Icons.calendar_month_outlined, size: 18, color: AppColors.text.withOpacity(0.35)),
-                          ]),
+                          child: Row(
+                            children: [
+                              Icon(
+                                Icons.calendar_today_outlined,
+                                size: 16,
+                                color: AppColors.text.withOpacity(0.45),
+                              ),
+                              const SizedBox(width: 10),
+                              Expanded(
+                                child: Text(
+                                  _formattedDate,
+                                  style: const TextStyle(
+                                    fontSize: 15,
+                                    color: AppColors.text,
+                                  ),
+                                ),
+                              ),
+                              Icon(
+                                Icons.calendar_month_outlined,
+                                size: 18,
+                                color: AppColors.text.withOpacity(0.35),
+                              ),
+                            ],
+                          ),
                         ),
                       ),
                       if (state.hasError)
                         Padding(
                           padding: const EdgeInsets.only(top: 6, left: 4),
-                          child: Text(state.errorText!, style: const TextStyle(fontSize: 12, color: AppColors.button)),
+                          child: Text(
+                            state.errorText!,
+                            style: const TextStyle(
+                              fontSize: 12,
+                              color: AppColors.button,
+                            ),
+                          ),
                         ),
                     ],
                   ),
@@ -223,6 +290,18 @@ class _NewTaskScreenState extends State<NewTaskScreen> {
                   onChanged: (val) => setState(() => _priority = val),
                 ),
 
+                const SizedBox(height: 16),
+                SwitchListTile(
+                  contentPadding: EdgeInsets.zero,
+                  title: const Text(
+                    'Mark as favorite',
+                    style: TextStyle(color: AppColors.text),
+                  ),
+                  value: _isFavorite,
+                  activeColor: AppColors.button,
+                  onChanged: (value) => setState(() => _isFavorite = value),
+                ),
+
                 const SizedBox(height: 40),
                 SizedBox(
                   width: double.infinity,
@@ -232,17 +311,27 @@ class _NewTaskScreenState extends State<NewTaskScreen> {
                       backgroundColor: AppColors.button,
                       foregroundColor: AppColors.buttonText,
                       padding: const EdgeInsets.symmetric(vertical: 16),
-                      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(30)),
+                      shape: RoundedRectangleBorder(
+                        borderRadius: BorderRadius.circular(30),
+                      ),
                       elevation: 0,
                     ),
                     child: _isSaving
                         ? const SizedBox(
-                        height: 24, width: 24,
-                        child: CircularProgressIndicator(strokeWidth: 2.5, color: AppColors.background))
+                            height: 24,
+                            width: 24,
+                            child: CircularProgressIndicator(
+                              strokeWidth: 2.5,
+                              color: AppColors.background,
+                            ),
+                          )
                         : Text(
-                      _isEditing ? 'Update Task' : 'Save Task',
-                      style: const TextStyle(fontSize: 18, fontWeight: FontWeight.w700),
-                    ),
+                            _isEditing ? 'Update Task' : 'Save Task',
+                            style: const TextStyle(
+                              fontSize: 18,
+                              fontWeight: FontWeight.w700,
+                            ),
+                          ),
                   ),
                 ),
                 const SizedBox(height: 24),

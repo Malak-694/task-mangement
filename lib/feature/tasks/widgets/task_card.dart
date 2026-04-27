@@ -1,20 +1,28 @@
 import 'package:flutter/material.dart';
 import 'package:intl/intl.dart';
 import 'package:mobile_assignment/core/style/colors.dart';
-import 'package:mobile_assignment/feature/tasks/widgets/priority_badge.dart' show PriorityBadge;
+import 'package:mobile_assignment/feature/tasks/widgets/priority_badge.dart'
+    show PriorityBadge;
 import 'package:mobile_assignment/feature/tasks/models/task_model.dart';
-import 'package:mobile_assignment/feature/tasks/Services/task_reprositry.dart';
 
 class TaskCard extends StatefulWidget {
   final Task task;
   final VoidCallback? onDeleted;
   final VoidCallback? onEdited;
+  final VoidCallback? onToggleComplete;
+  final VoidCallback? onToggleFavorite;
+  final bool showDeleteEditAction;
+  final bool showFavoriteAction;
 
   const TaskCard({
     super.key,
     required this.task,
     this.onDeleted,
     this.onEdited,
+    this.onToggleComplete,
+    this.onToggleFavorite,
+    this.showFavoriteAction = true,
+    this.showDeleteEditAction = true,
   });
 
   @override
@@ -22,30 +30,6 @@ class TaskCard extends StatefulWidget {
 }
 
 class _TaskCardState extends State<TaskCard> {
-  late bool _isDone;
-
-  @override
-  void initState() {
-    super.initState();
-    _isDone = widget.task.isCompleted;
-  }
-
-  Future<void> _toggleCompletion(bool completed) async {
-    setState(() => _isDone = completed);
-    await TaskRepository.instance.markCompleted(widget.task, completed);
-  }
-
-  Future<void> _deleteTask() async {
-    try {
-      await TaskRepository.instance.deleteTask(widget.task);
-      if (mounted && widget.onDeleted != null) {
-        widget.onDeleted!();
-      }
-    } catch (e) {
-      debugPrint('Error deleting task: $e');
-    }
-  }
-
   void _onEditTap() {
     if (widget.onEdited != null) {
       widget.onEdited!();
@@ -58,9 +42,11 @@ class _TaskCardState extends State<TaskCard> {
 
   @override
   Widget build(BuildContext context) {
-    final taskKey = widget.task.id ?? widget.task.createdAt.millisecondsSinceEpoch;
+    final taskKey =
+        widget.task.id ?? widget.task.createdAt.millisecondsSinceEpoch;
     final dueDate = widget.task.dueDate;
-    final isOverdue = dueDate.isBefore(DateTime.now()) && !widget.task.isCompleted;
+    final isOverdue =
+        dueDate.isBefore(DateTime.now()) && !widget.task.isCompleted;
 
     return Dismissible(
       key: ValueKey(taskKey),
@@ -74,13 +60,13 @@ class _TaskCardState extends State<TaskCard> {
         ),
         child: const Icon(Icons.delete_outline, color: Colors.white),
       ),
-      onDismissed: (_) => _deleteTask(),
+      onDismissed: (_) => widget.onDeleted?.call(),
       child: Container(
         decoration: BoxDecoration(
           color: AppColors.background,
           borderRadius: BorderRadius.circular(16),
           border: Border.all(
-            color: _isDone
+            color: widget.task.isCompleted
                 ? AppColors.primary.withOpacity(0.2)
                 : AppColors.primary.withOpacity(0.4),
             width: 1,
@@ -98,7 +84,25 @@ class _TaskCardState extends State<TaskCard> {
           mainAxisSize: MainAxisSize.min,
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            PriorityBadge(label: widget.task.priority),
+            Row(
+              children: [
+                PriorityBadge(label: widget.task.priority),
+                const Spacer(),
+                if (widget.showFavoriteAction)
+                  InkWell(
+                    onTap: widget.onToggleFavorite,
+                    borderRadius: BorderRadius.circular(20),
+                    child: Icon(
+                      widget.task.isFavorite
+                          ? Icons.favorite
+                          : Icons.favorite_border,
+                      color: widget.task.isFavorite
+                          ? AppColors.button
+                          : AppColors.secondary.withOpacity(0.6),
+                    ),
+                  ),
+              ],
+            ),
 
             const SizedBox(height: 12),
 
@@ -110,8 +114,12 @@ class _TaskCardState extends State<TaskCard> {
                     style: TextStyle(
                       fontSize: 15,
                       fontWeight: FontWeight.w600,
-                      color: _isDone ? AppColors.text.withOpacity(0.4) : AppColors.text,
-                      decoration: _isDone ? TextDecoration.lineThrough : TextDecoration.none,
+                      color: widget.task.isCompleted
+                          ? AppColors.text.withOpacity(0.4)
+                          : AppColors.text,
+                      decoration: widget.task.isCompleted
+                          ? TextDecoration.lineThrough
+                          : TextDecoration.none,
                       decorationColor: AppColors.text.withOpacity(0.4),
                     ),
                     maxLines: 2,
@@ -119,21 +127,29 @@ class _TaskCardState extends State<TaskCard> {
                   ),
                 ),
                 GestureDetector(
-                  onTap: () => _toggleCompletion(!_isDone),
+                  onTap: widget.onToggleComplete,
                   child: AnimatedContainer(
                     duration: const Duration(milliseconds: 200),
                     width: 26,
                     height: 26,
                     decoration: BoxDecoration(
                       shape: BoxShape.circle,
-                      color: _isDone ? AppColors.button : Colors.transparent,
+                      color: widget.task.isCompleted
+                          ? AppColors.button
+                          : Colors.transparent,
                       border: Border.all(
-                        color: _isDone ? AppColors.button : AppColors.primary,
+                        color: widget.task.isCompleted
+                            ? AppColors.button
+                            : AppColors.primary,
                         width: 1.5,
                       ),
                     ),
-                    child: _isDone
-                        ? const Icon(Icons.check, size: 13, color: AppColors.buttonText)
+                    child: widget.task.isCompleted
+                        ? const Icon(
+                            Icons.check,
+                            size: 13,
+                            color: AppColors.buttonText,
+                          )
                         : null,
                   ),
                 ),
@@ -187,32 +203,68 @@ class _TaskCardState extends State<TaskCard> {
                 ),
 
                 const Spacer(),
-                InkWell(
-                  onTap: _onEditTap,
-                  borderRadius: BorderRadius.circular(20),
-                  child: Padding(
-                    padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
-                    child: Row(
-                      mainAxisSize: MainAxisSize.min,
-                      children: [
-                        Icon(
-                          Icons.edit_outlined,
-                          size: 20,
-                          color: AppColors.primary.withOpacity(0.7),
-                        ),
-                        const SizedBox(width: 4),
-                        Text(
-                          'Edit',
-                          style: TextStyle(
-                            fontSize: 15,
-                            fontWeight: FontWeight.w500,
-                            color: AppColors.primary,
+                if (widget.showDeleteEditAction) ...[
+                  InkWell(
+                    onTap: _onEditTap,
+                    borderRadius: BorderRadius.circular(20),
+                    child: Padding(
+                      padding: const EdgeInsets.symmetric(
+                        horizontal: 8,
+                        vertical: 4,
+                      ),
+                      child: Row(
+                        mainAxisSize: MainAxisSize.min,
+                        children: [
+                          Icon(
+                            Icons.edit_outlined,
+                            size: 20,
+                            color: AppColors.primary.withOpacity(0.7),
                           ),
-                        ),
-                      ],
+                          const SizedBox(width: 4),
+                          Text(
+                            'Edit',
+                            style: TextStyle(
+                              fontSize: 15,
+                              fontWeight: FontWeight.w500,
+                              color: AppColors.primary,
+                            ),
+                          ),
+                        ],
+                      ),
                     ),
                   ),
-                ),
+
+                  const SizedBox(width: 8),
+                  InkWell(
+                    onTap: widget.onDeleted,
+                    borderRadius: BorderRadius.circular(20),
+                    child: Padding(
+                      padding: const EdgeInsets.symmetric(
+                        horizontal: 8,
+                        vertical: 4,
+                      ),
+                      child: Row(
+                        mainAxisSize: MainAxisSize.min,
+                        children: [
+                          Icon(
+                            Icons.delete_outline,
+                            size: 20,
+                            color: Colors.red.shade400,
+                          ),
+                          const SizedBox(width: 4),
+                          Text(
+                            'Delete',
+                            style: TextStyle(
+                              fontSize: 15,
+                              fontWeight: FontWeight.w500,
+                              color: Colors.red.shade400,
+                            ),
+                          ),
+                        ],
+                      ),
+                    ),
+                  ),
+                ],
               ],
             ),
           ],

@@ -1,5 +1,3 @@
-
-
 // lib/core/session/session_manager.dart
 
 class SessionManager {
@@ -10,5 +8,4 @@ class SessionManager {
 
   void setUser(String email) => currentUserEmail = email;
   void clearUser() => currentUserEmail = null;
-
 }
