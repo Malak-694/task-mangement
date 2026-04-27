@@ -13,16 +13,16 @@ enum AuthState { idle, loading, success, failure }
 
 class AuthProvider extends ChangeNotifier {
   AuthState _state = AuthState.idle;
-  String?   _error;
+  String? _error;
   Map<String, dynamic>? _user;
 
   // ── Getters ───────────────────────────────────────────────────────────────
 
-  AuthState             get state     => _state;
-  String?               get error     => _error;
-  Map<String, dynamic>? get user      => _user;
-  bool                  get isLoading => _state == AuthState.loading;
-  bool                  get isLoggedIn => _user != null;
+  AuthState get state => _state;
+  String? get error => _error;
+  Map<String, dynamic>? get user => _user;
+  bool get isLoading => _state == AuthState.loading;
+  bool get isLoggedIn => _user != null;
 
   // ── Login ─────────────────────────────────────────────────────────────────
 
@@ -95,7 +95,7 @@ class AuthProvider extends ChangeNotifier {
     await HybridAuthService.instance.signOut();
     SessionManager.instance.clearUser();
     TaskRepository.instance.setUser(null);
-    _user  = null;
+    _user = null;
     _error = null;
     _set(AuthState.idle);
   }
