@@ -8,8 +8,6 @@ class LocalProfileService {
   LocalProfileService._();
   static final LocalProfileService instance = LocalProfileService._();
 
-  final db = LocalAuthService.instance.database;
-
   Future<String?> saveAvatarImage(File imageFile, String email) async {
     try {
       final appDir = await getApplicationDocumentsDirectory();
@@ -24,7 +22,7 @@ class LocalProfileService {
 
       await imageFile.copy(destPath);
       return destPath;
-    } catch (_) {
+    } catch (e) {
       return null;
     }
   }
@@ -36,7 +34,10 @@ class LocalProfileService {
     required String password,
     File? avatarFile,
   }) async {
-    if (db == null) return false;
+    final db = LocalAuthService.instance.database;
+    if (db == null) {
+      return false;
+    }
 
     String? avatarPath;
     if (avatarFile != null) {
@@ -46,19 +47,20 @@ class LocalProfileService {
     final data = <String, dynamic>{
       'name': name,
       'student_id': studentId,
-      'password' : password
+      'password': password,
     };
 
     if (avatarPath != null) {
       data['avatar_path'] = avatarPath;
     }
 
-    final rows = await db!.update(
+    final rows = await db.update(
       'users',
       data,
       where: 'email = ?',
       whereArgs: [email],
     );
+
     return rows > 0;
   }
 

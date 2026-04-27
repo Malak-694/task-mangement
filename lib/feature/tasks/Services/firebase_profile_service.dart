@@ -2,7 +2,6 @@ import 'dart:io';
 
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firebase_auth/firebase_auth.dart';
-import 'package:flutter/foundation.dart';
 
 import '../../../core/imagekit/imagekit_service.dart';
 
@@ -12,8 +11,8 @@ class FirebaseProfileService {
 
   static const String _collection = 'user-student';
 
-  final FirebaseFirestore _db   = FirebaseFirestore.instance;
-  final FirebaseAuth      _auth = FirebaseAuth.instance;
+  final FirebaseFirestore _db = FirebaseFirestore.instance;
+  final FirebaseAuth _auth = FirebaseAuth.instance;
 
   Future<String?> saveAvatarImage(File imageFile, String email) async {
     try {
@@ -22,13 +21,12 @@ class FirebaseProfileService {
 
       final url = await ImageKitService.instance.uploadImage(
         imageFile: imageFile,
-        fileName:  '$uid.jpg',
-        folder:    'avatars',
+        fileName: '$uid.jpg',
+        folder: 'avatars',
       );
 
       return url;
-    } catch (e, st) {
-      debugPrint('FirebaseProfileService.saveAvatarImage failed: $e\n$st');
+    } catch (e) {
       return null;
     }
   }
@@ -42,7 +40,7 @@ class FirebaseProfileService {
   }) async {
     try {
       final user = _auth.currentUser;
-      final uid  = user?.uid;
+      final uid = user?.uid;
       if (uid == null) return false;
 
       String? avatarUrl;
@@ -51,8 +49,8 @@ class FirebaseProfileService {
       }
 
       final data = <String, dynamic>{
-        'full_name':        name,
-        'student_id':       studentId,
+        'full_name': name,
+        'student_id': studentId,
         'university_email': email,
       };
       if (avatarUrl != null) data['avatar_url'] = avatarUrl;
@@ -66,17 +64,14 @@ class FirebaseProfileService {
         try {
           await user!.updatePassword(password);
         } on FirebaseAuthException catch (e) {
-          debugPrint('Password update failed: ${e.code}');
-          // Profile still saved successfully
+          // Password update failed, but profile still saved
         }
       }
       return true;
-    } catch (e, st) {
-      debugPrint('FirebaseProfileService.updateUser failed: $e\n$st');
+    } catch (e) {
       return false;
     }
   }
-
 
   Future<Map<String, dynamic>?> getUserByEmail(String email) async {
     try {
@@ -90,8 +85,7 @@ class FirebaseProfileService {
 
       final doc = snap.docs.first;
       return {...doc.data(), 'id': doc.id};
-    } catch (e, st) {
-      debugPrint('FirebaseProfileService.getUserByEmail failed: $e\n$st');
+    } catch (e) {
       return null;
     }
   }

@@ -11,13 +11,13 @@ enum ProfileState { idle, loading, saving, success, failure }
 
 class ProfileProvider extends ChangeNotifier {
   final _service = ProfileService.instance;
-  final _session = SessionManager.instance;
+  final _session  = SessionManager.instance;
 
   ProfileState           _state = ProfileState.idle;
   Map<String, dynamic>?  _user;
   String?                _error;
+  String?                _emailOverride;
 
-  // ── Getters ───────────────────────────────────────────────────────────────
 
   ProfileState          get state      => _state;
   Map<String, dynamic>? get user       => _user;
@@ -30,19 +30,27 @@ class ProfileProvider extends ChangeNotifier {
   String? get studentId  => _user?['student_id'];
   String? get avatarPath => _user?['avatar_path'];
 
-  // ── Load ──────────────────────────────────────────────────────────────────
+
+  void setEmailOverride(String email) {
+    _emailOverride = email;
+  }
 
   Future<void> loadUser() async {
-    final email = _session.currentUserEmail;
-    if (email == null) return;
+    final email = _session.currentUserEmail ?? _emailOverride;
+    if (email == null) {
+      debugPrint(' ProfileProvider.loadUser: no session email');
+      return;
+    }
 
+    await loadUserByEmail(email);
+  }
+
+  Future<void> loadUserByEmail(String email) async {
     _set(ProfileState.loading);
     final user = await _service.getUserByEmail(email);
     _user = user;
     _set(ProfileState.success);
   }
-
-  // ── Update ────────────────────────────────────────────────────────────────
 
   Future<bool> updateUser({
     required String name,
@@ -50,11 +58,12 @@ class ProfileProvider extends ChangeNotifier {
     required String password,
     File? avatarFile,
   }) async {
-    final email = _session.currentUserEmail;
-    if (email == null) return false;
+    final email = _session.currentUserEmail ?? _emailOverride;
+    if (email == null) {
+      return false;
+    }
 
     _set(ProfileState.saving);
-
     final success = await _service.updateUser(
       email:      email,
       name:       name,
@@ -64,24 +73,24 @@ class ProfileProvider extends ChangeNotifier {
     );
 
     if (success) {
-      await loadUser(); // refresh _user so ProfileScreen updates automatically
+      final updated = await _service.getUserByEmail(email);
+      _user = updated;
+      _set(ProfileState.success);
     } else {
+      _error = 'Failed to update profile.';
       _set(ProfileState.failure);
     }
 
     return success;
   }
 
-  // ── Logout ────────────────────────────────────────────────────────────────
-
   Future<void> logout(AuthProvider authProvider) async {
     await authProvider.logout();
-    _user  = null;
-    _error = null;
+    _user          = null;
+    _error         = null;
+    _emailOverride = null;
     _set(ProfileState.idle);
   }
-
-  // ── Helper ────────────────────────────────────────────────────────────────
 
   void _set(ProfileState s) {
     _state = s;

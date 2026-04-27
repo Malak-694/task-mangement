@@ -107,31 +107,14 @@ class _TaskCardState extends State<TaskCard> {
             const SizedBox(height: 12),
 
             Row(
+              crossAxisAlignment: CrossAxisAlignment.center,
               children: [
-                Expanded(
-                  child: Text(
-                    widget.task.title,
-                    style: TextStyle(
-                      fontSize: 15,
-                      fontWeight: FontWeight.w600,
-                      color: widget.task.isCompleted
-                          ? AppColors.text.withOpacity(0.4)
-                          : AppColors.text,
-                      decoration: widget.task.isCompleted
-                          ? TextDecoration.lineThrough
-                          : TextDecoration.none,
-                      decorationColor: AppColors.text.withOpacity(0.4),
-                    ),
-                    maxLines: 2,
-                    overflow: TextOverflow.ellipsis,
-                  ),
-                ),
                 GestureDetector(
                   onTap: widget.onToggleComplete,
                   child: AnimatedContainer(
                     duration: const Duration(milliseconds: 200),
-                    width: 26,
-                    height: 26,
+                    width: 25,
+                    height: 25,
                     decoration: BoxDecoration(
                       shape: BoxShape.circle,
                       color: widget.task.isCompleted
@@ -153,26 +136,48 @@ class _TaskCardState extends State<TaskCard> {
                         : null,
                   ),
                 ),
+                SizedBox(width: 14,),
+                Expanded(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Text(
+                        widget.task.title,
+                        style: TextStyle(
+                          fontSize: 17,
+                          fontWeight: FontWeight.w600,
+                          color: widget.task.isCompleted
+                              ? AppColors.text.withOpacity(0.4)
+                              : AppColors.text,
+                          decoration: widget.task.isCompleted
+                              ? TextDecoration.lineThrough
+                              : TextDecoration.none,
+                          decorationColor: AppColors.text.withOpacity(0.4),
+                        ),
+                        maxLines: 2,
+                        overflow: TextOverflow.ellipsis,
+                      ),
+                      const SizedBox(height: 6),
+                  
+                      if (widget.task.description?.isNotEmpty == true)
+                        Padding(
+                          padding: const EdgeInsets.only(top: 4),
+                          child: Text(
+                            widget.task.description!,
+                            style: TextStyle(
+                              fontSize: 13,
+                              color: AppColors.text.withOpacity(0.65),
+                              height: 1.5,
+                            ),
+                            maxLines: 3,
+                            overflow: TextOverflow.ellipsis,
+                          ),
+                        ),
+                    ],
+                  ),
+                )
               ],
             ),
-
-            const SizedBox(height: 6),
-
-            if (widget.task.description?.isNotEmpty == true)
-              Padding(
-                padding: const EdgeInsets.only(top: 4),
-                child: Text(
-                  widget.task.description!,
-                  style: TextStyle(
-                    fontSize: 13,
-                    color: AppColors.text.withOpacity(0.65),
-                    height: 1.5,
-                  ),
-                  maxLines: 3,
-                  overflow: TextOverflow.ellipsis,
-                ),
-              ),
-
             const SizedBox(height: 16),
 
             Divider(

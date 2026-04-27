@@ -1,3 +1,5 @@
+import 'package:cloud_firestore/cloud_firestore.dart';
+import 'package:firebase_auth/firebase_auth.dart' hide AuthProvider;
 import 'package:flutter/material.dart';
 import 'package:mobile_assignment/core/firebase/firebase_bootstrap.dart';
 import 'package:mobile_assignment/feature/auth/services/local_auth_service.dart';
@@ -21,9 +23,23 @@ import 'feature/tasks/providers/task_provider.dart';
 Future<void> main() async {
   WidgetsFlutterBinding.ensureInitialized();
   await FirebaseBootstrap.initialize();
+
+  if (FirebaseBootstrap.isReady) {
+    FirebaseFirestore.instance.settings = const Settings(
+      persistenceEnabled: true,
+      cacheSizeBytes: Settings.CACHE_SIZE_UNLIMITED,
+    );
+  }
+
   await LocalAuthService.instance.init();
   await LocalTaskService.instance.init();
-  TaskRepository.instance.setUser(null);
+  await SessionManager.instance.init();
+
+  final currentUser = FirebaseBootstrap.isReady
+      ? FirebaseAuth.instance.currentUser
+      : null;
+  TaskRepository.instance.setUser(currentUser?.uid);
+
   runApp(
     MultiProvider(
       providers: [

@@ -16,15 +16,11 @@ class AuthProvider extends ChangeNotifier {
   String? _error;
   Map<String, dynamic>? _user;
 
-  // ── Getters ───────────────────────────────────────────────────────────────
-
   AuthState get state => _state;
   String? get error => _error;
   Map<String, dynamic>? get user => _user;
   bool get isLoading => _state == AuthState.loading;
   bool get isLoggedIn => _user != null;
-
-  // ── Login ─────────────────────────────────────────────────────────────────
 
   Future<AuthResult> login({
     required String email,
@@ -39,13 +35,14 @@ class AuthProvider extends ChangeNotifier {
 
     if (result.isSuccess) {
       _user = await LocalAuthService.instance.getUserByEmail(email);
-
-      // Session + task repository wiring (same as your current login_screen.dart)
       SessionManager.instance.setUser(email);
+
       final firebaseUser = FirebaseAuth.instance.currentUser;
       if (firebaseUser != null) {
         TaskRepository.instance.setUser(firebaseUser.uid);
         await TaskRepository.instance.syncFromFirebase();
+      } else {
+        TaskRepository.instance.setUser(null);
       }
 
       _set(AuthState.success);
@@ -56,8 +53,6 @@ class AuthProvider extends ChangeNotifier {
 
     return result;
   }
-
-  // ── Sign Up ───────────────────────────────────────────────────────────────
 
   Future<AuthResult> signUp({
     required String name,
@@ -80,6 +75,13 @@ class AuthProvider extends ChangeNotifier {
 
     if (result.isSuccess) {
       _user = await LocalAuthService.instance.getUserByEmail(email);
+
+      final firebaseUser = FirebaseAuth.instance.currentUser;
+      if (firebaseUser != null) {
+        SessionManager.instance.setUser(email);
+        TaskRepository.instance.setUser(firebaseUser.uid);
+      }
+
       _set(AuthState.success);
     } else {
       _error = result.message;
@@ -89,8 +91,6 @@ class AuthProvider extends ChangeNotifier {
     return result;
   }
 
-  // ── Logout ────────────────────────────────────────────────────────────────
-
   Future<void> logout() async {
     await HybridAuthService.instance.signOut();
     SessionManager.instance.clearUser();
@@ -99,8 +99,6 @@ class AuthProvider extends ChangeNotifier {
     _error = null;
     _set(AuthState.idle);
   }
-
-  // ── Helper ────────────────────────────────────────────────────────────────
 
   void _set(AuthState s) {
     _state = s;

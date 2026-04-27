@@ -1,5 +1,3 @@
-// lib/feature/tasks/screens/task_screen.dart
-
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 
@@ -24,13 +22,11 @@ class _TaskScreenState extends State<TaskScreen> {
   @override
   void initState() {
     super.initState();
-    // Load once when screen opens
-    Future.microtask(() => context.read<TaskProvider>().loadTasks());
+    Future.microtask(() => context.read<TaskProvider>().startWatching());
   }
 
   @override
   Widget build(BuildContext context) {
-    // watch → rebuilds whenever TaskProvider calls notifyListeners()
     final provider = context.watch<TaskProvider>();
 
     return SafeArea(
@@ -88,7 +84,6 @@ class _TaskScreenState extends State<TaskScreen> {
                         context,
                         NewTaskScreen.routeName,
                       );
-                      // No manual reload needed — provider already updated
                     },
                     style: ElevatedButton.styleFrom(
                       backgroundColor: AppColors.button,
@@ -120,36 +115,37 @@ class _TaskScreenState extends State<TaskScreen> {
                     : provider.tasks.isEmpty
                     ? _buildEmptyState()
                     : RefreshIndicator(
-                        onRefresh: () =>
-                            context.read<TaskProvider>().loadTasks(),
-                        color: AppColors.primary,
-                        child: ListView.separated(
-                          padding: const EdgeInsets.only(bottom: 20),
-                          itemCount: provider.tasks.length,
-                          separatorBuilder: (_, __) =>
-                              const SizedBox(height: 12),
-                          itemBuilder: (context, index) {
-                            final task = provider.tasks[index];
-                            return TaskCard(
-                              task: task,
-                              onDeleted: () => _deleteTask(task),
-                              onToggleComplete: () => context
-                                  .read<TaskProvider>()
-                                  .toggleComplete(task),
-                              onToggleFavorite: () => context
-                                  .read<TaskProvider>()
-                                  .toggleFavorite(task),
-                              onEdited: () => Navigator.push(
-                                context,
-                                MaterialPageRoute(
-                                  builder: (_) =>
-                                      NewTaskScreen(taskToEdit: task),
-                                ),
-                              ),
-                            );
-                          },
+                  // ✅ changed: restarts the stream on pull-to-refresh
+                  onRefresh: () async =>
+                      context.read<TaskProvider>().startWatching(),
+                  color: AppColors.primary,
+                  child: ListView.separated(
+                    padding: const EdgeInsets.only(bottom: 20),
+                    itemCount: provider.tasks.length,
+                    separatorBuilder: (_, __) =>
+                    const SizedBox(height: 12),
+                    itemBuilder: (context, index) {
+                      final task = provider.tasks[index];
+                      return TaskCard(
+                        task: task,
+                        onDeleted: () => _deleteTask(task),
+                        onToggleComplete: () => context
+                            .read<TaskProvider>()
+                            .toggleComplete(task),
+                        onToggleFavorite: () => context
+                            .read<TaskProvider>()
+                            .toggleFavorite(task),
+                        onEdited: () => Navigator.push(
+                          context,
+                          MaterialPageRoute(
+                            builder: (_) =>
+                                NewTaskScreen(taskToEdit: task),
+                          ),
                         ),
-                      ),
+                      );
+                    },
+                  ),
+                ),
               ),
             ],
           ),

@@ -1,8 +1,10 @@
+// lib/feature/auth/services/local_auth_service.dart
+
+import 'package:flutter/foundation.dart';
 import 'package:path/path.dart';
 import 'package:sqflite/sqflite.dart';
 
 import '../models/auth_result.dart';
-
 
 class LocalAuthService {
   LocalAuthService._();
@@ -13,7 +15,6 @@ class LocalAuthService {
   static const _usersTable = 'users';
 
   Database? _database;
-
 
   Future<void> init() async {
     if (_database != null) return;
@@ -33,14 +34,13 @@ class LocalAuthService {
             email TEXT UNIQUE NOT NULL,
             student_id TEXT UNIQUE NOT NULL,
             level INTEGER,
-            password TEXT NOT NULL
+            password TEXT NOT NULL,
+            avatar_path TEXT
           )
         ''');
       },
       onUpgrade: (db, oldVersion, newVersion) async {
         if (oldVersion < 2) {
-          // SQLite does not support adding UNIQUE + NOT NULL columns cleanly
-          // in-place, so we rebuild the table and copy data forward.
           await db.execute('''
             CREATE TABLE ${_usersTable}_new(
               id INTEGER PRIMARY KEY AUTOINCREMENT,
@@ -52,7 +52,6 @@ class LocalAuthService {
               password TEXT NOT NULL
             )
           ''');
-
           await db.execute('''
             INSERT INTO ${_usersTable}_new (id, name, gender, email, student_id, level, password)
             SELECT
@@ -60,19 +59,15 @@ class LocalAuthService {
               'Unknown',
               NULL,
               email,
-              -- Keep compatibility for old records by deriving student_id
-              -- from email username part.
               SUBSTR(email, 1, INSTR(email, '@') - 1),
               NULL,
               password
             FROM $_usersTable
           ''');
-
           await db.execute('DROP TABLE $_usersTable');
           await db.execute('ALTER TABLE ${_usersTable}_new RENAME TO $_usersTable');
         }
         if (oldVersion < 3) {
-          // Just add the new column to existing table
           await db.execute(
             'ALTER TABLE $_usersTable ADD COLUMN avatar_path TEXT',
           );
@@ -80,7 +75,6 @@ class LocalAuthService {
       },
     );
   }
-
 
   Future<AuthResult> signUp({
     required String name,
@@ -118,19 +112,17 @@ class LocalAuthService {
           message: 'Signup failure: email or student ID already registered.',
         );
       }
-
       return const AuthResult(
         status: AuthStatus.failure,
         message: 'Signup failure',
       );
-    } catch (_) {
+    } catch (e) {
       return const AuthResult(
         status: AuthStatus.failure,
         message: 'Signup failure',
       );
     }
   }
-
 
   Future<AuthResult> login({
     required String email,
@@ -152,18 +144,29 @@ class LocalAuthService {
     );
 
     if (users.isEmpty) {
-      return const AuthResult(
-        status: AuthStatus.failure,
-        message: 'Login failure',
+      final emailOnly = await db.query(
+        _usersTable,
+        where: 'email = ?',
+        whereArgs: [email],
+        limit: 1,
       );
+      if (emailOnly.isEmpty) {
+        return const AuthResult(
+          status: AuthStatus.failure,
+          message: 'Login failure: no account found. Please sign up first.',
+        );
+      } else {
+        return const AuthResult(
+          status: AuthStatus.failure,
+          message: 'Login failure: incorrect password.',
+        );
+      }
     }
-
     return const AuthResult(
       status: AuthStatus.success,
       message: 'Login success',
     );
   }
-
 
   Future<Map<String, dynamic>?> getUserByEmail(String email) async {
     final db = _database;

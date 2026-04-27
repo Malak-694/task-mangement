@@ -1,3 +1,4 @@
+import 'package:firebase_auth/firebase_auth.dart';
 import 'package:firebase_core/firebase_core.dart';
 import 'package:flutter/foundation.dart';
 
@@ -20,13 +21,22 @@ class FirebaseBootstrap {
       await Firebase.initializeApp(
         options: DefaultFirebaseOptions.currentPlatform,
       );
+
+      // ✅ Disable reCAPTCHA verification in debug mode
+      // Prevents "RecaptchaAction network error" on emulators / no internet
+      if (kDebugMode) {
+        await FirebaseAuth.instance.setSettings(
+          appVerificationDisabledForTesting: true,
+        );
+      }
+
       _ready = true;
     } catch (e) {
       _ready = false;
       debugPrint(
         'Firebase.initializeApp failed — cloud auth disabled; local DB auth still works.\n'
-        'If you need Firebase: run on Android/iOS (or Chrome for web), run '
-        '`flutter clean`, then rebuild (not hot-restart). Error: $e',
+            'If you need Firebase: run on Android/iOS (or Chrome for web), run '
+            '`flutter clean`, then rebuild (not hot-restart). Error: $e',
       );
     }
   }

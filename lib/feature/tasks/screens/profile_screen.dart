@@ -56,7 +56,6 @@ class _ProfileScreenState extends State<ProfileScreen> {
           TextButton(
             onPressed: () async {
               await Navigator.pushNamed(context, EditProfileScreen.routeName);
-              // No manual reload — ProfileProvider.updateUser() calls loadUser() internally
             },
             child: const Text('Edit', style: TextStyle(color: AppColors.button, fontSize: 14)),
           ),
@@ -68,7 +67,6 @@ class _ProfileScreenState extends State<ProfileScreen> {
         children: [
           const SizedBox(height: 20),
 
-          // ── Avatar ────────────────────────────────────────────────
           CircleAvatar(
             radius: 60,
             backgroundColor: AppColors.primary.withOpacity(0.15),
@@ -77,7 +75,6 @@ class _ProfileScreenState extends State<ProfileScreen> {
 
           const SizedBox(height: 28),
 
-          // ── Fields ────────────────────────────────────────────────
           Expanded(
             child: ListView(
               padding: const EdgeInsets.symmetric(horizontal: 20),
@@ -89,8 +86,6 @@ class _ProfileScreenState extends State<ProfileScreen> {
               ],
             ),
           ),
-
-          // ── Logout ────────────────────────────────────────────────
           Padding(
             padding: const EdgeInsets.fromLTRB(20, 0, 20, 36),
             child: SizedBox(

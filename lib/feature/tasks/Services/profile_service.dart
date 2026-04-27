@@ -1,3 +1,4 @@
+import 'dart:async';
 import 'dart:io';
 
 import 'package:mobile_assignment/core/firebase/firebase_bootstrap.dart';
@@ -23,22 +24,29 @@ class ProfileService {
     required String password,
     File? avatarFile,
   }) async {
-    // Always write to local so the app works offline
-    await LocalProfileService.instance.updateUser(
+    final localSuccess = await LocalProfileService.instance.updateUser(
       email: email,
       name: name,
       password: password,
       studentId: studentId,
-      avatarFile: FirebaseBootstrap.isReady ? null : avatarFile,
+      avatarFile: avatarFile,
     );
 
+    if (!localSuccess) {
+      return false;
+    }
+
     if (FirebaseBootstrap.isReady) {
-      return FirebaseProfileService.instance.updateUser(
-        email: email,
-        name: name,
-        password: password ,
-        studentId: studentId,
-        avatarFile: avatarFile,
+      unawaited(
+        FirebaseProfileService.instance
+            .updateUser(
+          email: email,
+          name: name,
+          password: password,
+          studentId: studentId,
+          avatarFile: avatarFile,
+        )
+            .catchError((e) => null),
       );
     }
 
@@ -46,26 +54,34 @@ class ProfileService {
   }
 
   Future<Map<String, dynamic>?> getUserByEmail(String email) async {
-    Map<String, dynamic>? user;
+    final localUser = await LocalProfileService.instance.getUserByEmail(email);
 
-    if (FirebaseBootstrap.isReady) {
-      user = await FirebaseProfileService.instance.getUserByEmail(email);
-
-      if (user != null) {
-        return {
-          'name': user['full_name'] ?? user['name'] ?? '—',
-          'email': user['university_email'] ?? user['email'] ?? '—',
-          'student_id': user['student_id'] ?? '—',
-          'avatar_path': user['avatar_url'] ?? user['avatar_path'],
-          'gender': user['gender'],
-          'id': user['id'],
-          'password' : user['password']
-        };
-      }
-    } else {
-      user = await LocalProfileService.instance.getUserByEmail(email);
+    if (!FirebaseBootstrap.isReady) {
+      return localUser;
     }
 
-    return user;
+    Map<String, dynamic>? firebaseUser;
+    try {
+      firebaseUser = await FirebaseProfileService.instance.getUserByEmail(email);
+    } catch (e) {
+      firebaseUser = null;
+    }
+
+    if (firebaseUser == null) {
+      return localUser;
+    }
+
+    final localAvatarPath = localUser?['avatar_path'];
+    final firebaseAvatarUrl = firebaseUser['avatar_url'] ?? firebaseUser['avatar_path'];
+
+    return {
+      'name': firebaseUser['full_name'] ?? firebaseUser['name'] ?? localUser?['name'] ?? '',
+      'email': firebaseUser['university_email'] ?? firebaseUser['email'] ?? localUser?['email'] ?? '',
+      'student_id': firebaseUser['student_id'] ?? localUser?['student_id'] ?? '',
+      'gender': firebaseUser['gender'] ?? localUser?['gender'],
+      'id': firebaseUser['id'] ?? localUser?['id'],
+      'password': localUser?['password'] ?? '',
+      'avatar_path': localAvatarPath ?? firebaseAvatarUrl,
+    };
   }
 }

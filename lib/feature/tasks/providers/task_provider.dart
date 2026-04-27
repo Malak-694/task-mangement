@@ -1,5 +1,6 @@
 // lib/feature/tasks/providers/task_provider.dart
 
+import 'dart:async';
 import 'package:flutter/foundation.dart';
 import '../models/task_model.dart';
 import '../Services/task_reprositry.dart';
@@ -12,8 +13,7 @@ class TaskProvider extends ChangeNotifier {
   TaskState _state = TaskState.idle;
   List<Task> _tasks = [];
   String? _error;
-
-  // ── Getters ───────────────────────────────────────────────────────────────
+  StreamSubscription<List<Task>>? _subscription;
 
   TaskState get state => _state;
   List<Task> get tasks => _tasks;
@@ -23,8 +23,6 @@ class TaskProvider extends ChangeNotifier {
   bool get isLoading => _state == TaskState.loading;
   int get count => _tasks.length;
   int get favoriteCount => favoriteTasks.length;
-
-  // ── Deadline reminder helpers ──────────────────────────────────────────────
 
   Duration remainingFor(Task task, {DateTime? now}) {
     final current = now ?? DateTime.now();
@@ -41,21 +39,38 @@ class TaskProvider extends ChangeNotifier {
       final hours = overdue.inHours;
       return 'Overdue by $hours hour${hours == 1 ? '' : 's'}';
     }
-
     if (remaining.inDays >= 1) {
       return '${remaining.inDays} day${remaining.inDays == 1 ? '' : 's'}';
     }
-
     final hours = remaining.inHours;
     if (hours >= 1) return '$hours hour${hours == 1 ? '' : 's'}';
-
     final minutes = remaining.inMinutes;
     if (minutes >= 1) return '$minutes minute${minutes == 1 ? '' : 's'}';
-
     return 'Less than a minute';
   }
 
-  // ── Load ──────────────────────────────────────────────────────────────────
+
+  void startWatching({bool onlyActive = false}) {
+    _subscription?.cancel();
+    final stream = _repo.watchAllTasks(onlyActive: onlyActive);
+
+    if (stream != null) {
+      _set(TaskState.loading);
+      _subscription = stream.listen(
+            (tasks) {
+          _tasks = tasks;
+          _set(TaskState.success);
+        },
+        onError: (e) {
+          _error = e.toString();
+          _set(TaskState.failure);
+        },
+      );
+    } else {
+      // OFFLINE: fall back to local DB query.
+      loadTasks(onlyActive: onlyActive);
+    }
+  }
 
   Future<void> loadTasks({
     bool onlyActive = false,
@@ -76,51 +91,54 @@ class TaskProvider extends ChangeNotifier {
     }
   }
 
-  // ── Insert ────────────────────────────────────────────────────────────────
 
   Future<void> addTask(Task task) async {
-    final saved = await _repo.insertTask(task);
-    _tasks.add(saved);
-    notifyListeners();
+    await _repo.insertTask(task);
+    if (_subscription == null) await loadTasks();
   }
-
-  // ── Update ────────────────────────────────────────────────────────────────
 
   Future<void> updateTask(Task task) async {
     await _repo.updateTask(task);
-    final i = _tasks.indexWhere((t) => t.id == task.id);
-    if (i != -1) _tasks[i] = task;
-    notifyListeners();
+    if (_subscription == null) {
+      final i = _tasks.indexWhere((t) => t.id == task.id);
+      if (i != -1) _tasks[i] = task;
+      notifyListeners();
+    }
   }
-
-  // ── Toggle complete ───────────────────────────────────────────────────────
 
   Future<void> toggleComplete(Task task) async {
     final updated = task.copyWith(isCompleted: !task.isCompleted);
     await _repo.markCompleted(task, updated.isCompleted);
-    final i = _tasks.indexWhere((t) => t.id == task.id);
-    if (i != -1) _tasks[i] = updated;
-    notifyListeners();
+    if (_subscription == null) {
+      final i = _tasks.indexWhere((t) => t.id == task.id);
+      if (i != -1) _tasks[i] = updated;
+      notifyListeners();
+    }
   }
-  // ── Toggle favorite ───────────────────────────────────────────────────────
 
   Future<void> toggleFavorite(Task task) async {
     final updated = task.copyWith(isFavorite: !task.isFavorite);
     await _repo.markFavorite(task, updated.isFavorite);
-    final i = _tasks.indexWhere((t) => t.id == task.id);
-    if (i != -1) _tasks[i] = updated;
-    notifyListeners();
+    if (_subscription == null) {
+      final i = _tasks.indexWhere((t) => t.id == task.id);
+      if (i != -1) _tasks[i] = updated;
+      notifyListeners();
+    }
   }
-
-  // ── Delete ────────────────────────────────────────────────────────────────
 
   Future<void> deleteTask(Task task) async {
     await _repo.deleteTask(task);
-    _tasks.removeWhere((t) => t.id == task.id);
-    notifyListeners();
+    if (_subscription == null) {
+      _tasks.removeWhere((t) => t.id == task.id);
+      notifyListeners();
+    }
   }
 
-  // ── Helper ────────────────────────────────────────────────────────────────
+  @override
+  void dispose() {
+    _subscription?.cancel();
+    super.dispose();
+  }
 
   void _set(TaskState s) {
     _state = s;

@@ -1,17 +1,18 @@
 import 'package:firebase_auth/firebase_auth.dart';
+import 'package:flutter/foundation.dart';
 
 import '../../../core/firebase/firebase_bootstrap.dart';
 import '../models/auth_result.dart';
 import 'local_auth_service.dart';
 import 'user_firestore_service.dart';
 
-/// Firebase Auth for identity, [LocalAuthService] (SQLite) for profile storage.
 class HybridAuthService {
   HybridAuthService._();
 
   static final HybridAuthService instance = HybridAuthService._();
 
   final FirebaseAuth _firebaseAuth = FirebaseAuth.instance;
+
 
   static String _loginFirebaseMessage(FirebaseAuthException e) {
     switch (e.code) {
@@ -23,6 +24,8 @@ class HybridAuthService {
         return 'Login failure: invalid email or password.';
       case 'invalid-email':
         return 'Login failure: invalid email address.';
+      case 'network-request-failed':
+        return 'Login failure: network error.';
       default:
         return 'Login failure: ${e.message ?? e.code}';
     }
@@ -36,12 +39,27 @@ class HybridAuthService {
         return 'Signup failure: an account already exists for that email.';
       case 'invalid-email':
         return 'Signup failure: invalid email address.';
+      case 'network-request-failed':
+        return 'Signup failure: network error.';
       default:
         return 'Signup failure: ${e.message ?? e.code}';
     }
   }
 
-  /// Signs in with Firebase, then verifies the same credentials against SQLite.
+
+  static bool _isNetworkError(Object e) {
+    final msg = e.toString().toLowerCase();
+    return msg.contains('network') ||
+        msg.contains('timeout') ||
+        msg.contains('unreachable') ||
+        msg.contains('recaptcha') ||
+        msg.contains('interrupted') ||
+        msg.contains('initial task failed') ||
+        msg.contains('channel-error') ||
+        msg.contains('not implemented') ||
+        msg.contains('platformexception');
+  }
+
   Future<AuthResult> login({
     required String email,
     required String password,
@@ -59,11 +77,25 @@ class HybridAuthService {
         password: password,
       );
     } on FirebaseAuthException catch (e) {
+
+      if (e.code == 'network-request-failed') {
+        return LocalAuthService.instance.login(
+          email: email,
+          password: password,
+        );
+      }
       return AuthResult(
         status: AuthStatus.failure,
         message: _loginFirebaseMessage(e),
       );
     } catch (e) {
+      if (_isNetworkError(e)) {
+        final result = await LocalAuthService.instance.login(
+          email: email,
+          password: password,
+        );
+        return result;
+      }
       return AuthResult(
         status: AuthStatus.failure,
         message: 'Login failure: $e',
@@ -79,8 +111,7 @@ class HybridAuthService {
       await _firebaseAuth.signOut();
       return const AuthResult(
         status: AuthStatus.failure,
-        message:
-            'Login failure: no local profile for this account. Sign up on this device first.',
+        message: 'Login failure: no local profile for this account. Sign up on this device first.',
       );
     }
 
@@ -90,8 +121,7 @@ class HybridAuthService {
     );
   }
 
-  /// Creates the Firebase user, then stores the full profile in SQLite.
-  /// Rolls back the Firebase account if local insert fails.
+
   Future<AuthResult> signUp({
     required String name,
     required String? gender,
@@ -117,11 +147,32 @@ class HybridAuthService {
         password: password,
       );
     } on FirebaseAuthException catch (e) {
+
+      if (e.code == 'network-request-failed') {
+        return LocalAuthService.instance.signUp(
+          name: name,
+          gender: gender,
+          email: email,
+          studentId: studentId,
+          level: level,
+          password: password,
+        );
+      }
       return AuthResult(
         status: AuthStatus.failure,
         message: _signupFirebaseMessage(e),
       );
     } catch (e) {
+      if (_isNetworkError(e)) {
+        return LocalAuthService.instance.signUp(
+          name: name,
+          gender: gender,
+          email: email,
+          studentId: studentId,
+          level: level,
+          password: password,
+        );
+      }
       return AuthResult(
         status: AuthStatus.failure,
         message: 'Signup failure: $e',
@@ -140,9 +191,7 @@ class HybridAuthService {
     if (!local.isSuccess) {
       try {
         await _firebaseAuth.currentUser?.delete();
-      } catch (_) {
-        // Best-effort rollback; user should fix via Firebase console if needed.
-      }
+      } catch (_) {}
       await _firebaseAuth.signOut();
       return local;
     }
