@@ -24,6 +24,8 @@ class _NewTaskScreenState extends State<NewTaskScreen> {
   final _formKey = GlobalKey<FormState>();
   late TextEditingController _titleCtrl;
   late TextEditingController _descCtrl;
+  final _titleFocus = FocusNode();
+  final _descriptionFocus = FocusNode();
 
   DateTime _dueDate = DateTime.now();
   String _priority = 'medium';
@@ -49,6 +51,8 @@ class _NewTaskScreenState extends State<NewTaskScreen> {
   void dispose() {
     _titleCtrl.dispose();
     _descCtrl.dispose();
+    _titleFocus.dispose();
+    _descriptionFocus.dispose();
     super.dispose();
   }
 
@@ -205,7 +209,11 @@ class _NewTaskScreenState extends State<NewTaskScreen> {
                 Label('Task Title', required: true),
                 Field(
                   controller: _titleCtrl,
+                  focusNode: _titleFocus,
                   hint: 'e.g., Source velvet cushions...',
+                  textInputAction: TextInputAction.next,
+                  onFieldSubmitted: (_) =>
+                      FocusScope.of(context).requestFocus(_descriptionFocus),
                   validator: TaskValidator.title,
                 ),
 
@@ -213,8 +221,11 @@ class _NewTaskScreenState extends State<NewTaskScreen> {
                 Label('Description'),
                 Field(
                   controller: _descCtrl,
+                  focusNode: _descriptionFocus,
                   hint: 'Add notes, material pairings...',
                   maxLines: 4,
+                  textInputAction: TextInputAction.done,
+                  onFieldSubmitted: (_) => FocusScope.of(context).unfocus(),
                 ),
 
                 const SizedBox(height: 28),

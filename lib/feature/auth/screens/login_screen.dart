@@ -19,14 +19,18 @@ class LoginScreen extends StatefulWidget {
 }
 
 class _LoginScreenState extends State<LoginScreen> {
-  final _formKey         = GlobalKey<FormState>();
-  final _emailCtrl       = TextEditingController();
-  final _passwordCtrl    = TextEditingController();
+  final _formKey = GlobalKey<FormState>();
+  final _emailCtrl = TextEditingController();
+  final _passwordCtrl = TextEditingController();
+  final _emailFocus = FocusNode();
+  final _passwordFocus = FocusNode();
 
   @override
   void dispose() {
     _emailCtrl.dispose();
     _passwordCtrl.dispose();
+    _emailFocus.dispose();
+    _passwordFocus.dispose();
     super.dispose();
   }
 
@@ -34,13 +38,15 @@ class _LoginScreenState extends State<LoginScreen> {
     if (!_formKey.currentState!.validate()) return;
 
     final result = await context.read<AuthProvider>().login(
-      email:    _emailCtrl.text.trim(),
+      email: _emailCtrl.text.trim(),
       password: _passwordCtrl.text,
     );
 
     if (!mounted) return;
 
-    ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(result.message)));
+    ScaffoldMessenger.of(
+      context,
+    ).showSnackBar(SnackBar(content: Text(result.message)));
 
     if (result.isSuccess) {
       Navigator.pushReplacementNamed(context, TaskScreen.routeName);
@@ -66,24 +72,39 @@ class _LoginScreenState extends State<LoginScreen> {
             padding: const EdgeInsets.all(20),
             children: [
               const SizedBox(height: 10),
-              const Text('Welcome back',
-                  style: TextStyle(fontSize: 26, fontWeight: FontWeight.bold, color: AppColors.text)),
+              const Text(
+                'Welcome back',
+                style: TextStyle(
+                  fontSize: 26,
+                  fontWeight: FontWeight.bold,
+                  color: AppColors.text,
+                ),
+              ),
               const SizedBox(height: 8),
-              const Text('Log in with your university credentials',
-                  style: TextStyle(color: Colors.grey)),
+              const Text(
+                'Log in with your university credentials',
+                style: TextStyle(color: Colors.grey),
+              ),
               const SizedBox(height: 30),
 
               AppTextField(
                 controller: _emailCtrl,
+                focusNode: _emailFocus,
                 label: 'University Email',
                 hint: '12345678@stud.fci-cu.edu.eg',
                 keyboardType: TextInputType.emailAddress,
+                textInputAction: TextInputAction.next,
+                onFieldSubmitted: (_) =>
+                    FocusScope.of(context).requestFocus(_passwordFocus),
                 validator: (v) => AuthValidator.required(v, 'Email'),
               ),
               AppTextField(
                 controller: _passwordCtrl,
+                focusNode: _passwordFocus,
                 label: 'Password',
                 obscure: true,
+                textInputAction: TextInputAction.done,
+                onFieldSubmitted: (_) => _login(),
                 validator: (v) => AuthValidator.required(v, 'Password'),
               ),
 
@@ -93,20 +114,29 @@ class _LoginScreenState extends State<LoginScreen> {
                 child: ElevatedButton(
                   style: ElevatedButton.styleFrom(
                     backgroundColor: AppColors.button,
-                    shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+                    shape: RoundedRectangleBorder(
+                      borderRadius: BorderRadius.circular(12),
+                    ),
                   ),
                   onPressed: isLoading ? null : _login,
                   child: isLoading
                       ? const CircularProgressIndicator(color: Colors.white)
-                      : const Text('Log In',
-                      style: TextStyle(color: AppColors.buttonText, fontSize: 16, fontWeight: FontWeight.bold)),
+                      : const Text(
+                          'Log In',
+                          style: TextStyle(
+                            color: AppColors.buttonText,
+                            fontSize: 16,
+                            fontWeight: FontWeight.bold,
+                          ),
+                        ),
                 ),
               ),
 
               TextButton(
                 onPressed: isLoading
                     ? null
-                    : () => Navigator.pushNamed(context, SignupScreen.routeName),
+                    : () =>
+                          Navigator.pushNamed(context, SignupScreen.routeName),
                 child: const Text('No account? Create one'),
               ),
             ],

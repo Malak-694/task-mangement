@@ -8,6 +8,9 @@ class AppTextField extends StatelessWidget {
   final bool obscure;
   final TextInputType? keyboardType;
   final String? Function(String?)? validator;
+  final FocusNode? focusNode;
+  final TextInputAction? textInputAction;
+  final ValueChanged<String>? onFieldSubmitted;
 
   const AppTextField({
     super.key,
@@ -17,6 +20,9 @@ class AppTextField extends StatelessWidget {
     this.obscure = false,
     this.keyboardType,
     this.validator,
+    this.focusNode,
+    this.textInputAction,
+    this.onFieldSubmitted,
   });
 
   @override
@@ -25,17 +31,18 @@ class AppTextField extends StatelessWidget {
       children: [
         TextFormField(
           controller: controller,
+          focusNode: focusNode,
           obscureText: obscure,
           keyboardType: keyboardType,
           validator: validator,
+          textInputAction: textInputAction,
+          onFieldSubmitted: onFieldSubmitted,
           decoration: InputDecoration(
             labelText: label,
             hintText: hint,
             filled: true,
             fillColor: AppColors.background,
-            border: OutlineInputBorder(
-              borderRadius: BorderRadius.circular(12),
-            ),
+            border: OutlineInputBorder(borderRadius: BorderRadius.circular(12)),
           ),
         ),
         const SizedBox(height: 16),
