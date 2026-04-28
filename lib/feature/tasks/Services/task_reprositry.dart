@@ -3,7 +3,6 @@
 import 'package:mobile_assignment/feature/tasks/Services/firebase_task_service.dart';
 import 'package:mobile_assignment/feature/tasks/models/task_model.dart';
 import 'local_task_service.dart';
-import 'firebase_task_service.dart';
 
 class TaskRepository {
   TaskRepository._();
@@ -41,21 +40,18 @@ class TaskRepository {
   }
 
   Future<List<Task>> getAllTasks({
-    bool onlyActive = false,
     String? sortBy,
     bool ascending = true,
   }) async {
     if (_online) {
-      final firebaseTasks = await _firebase.getAllTasks(_uid!, onlyActive: onlyActive);
+      final firebaseTasks = await _firebase.getAllTasks(_uid!);
       await _syncToLocal(firebaseTasks);
       return _local.getAllTasks(
-        onlyActive: onlyActive,
         sortBy: sortBy,
         ascending: ascending,
       );
     }
     return _local.getAllTasks(
-      onlyActive: onlyActive,
       sortBy: sortBy,
       ascending: ascending,
     );
@@ -102,7 +98,7 @@ class TaskRepository {
 
   Stream<List<Task>>? watchAllTasks({bool onlyActive = false}) {
     if (!_online) return null;
-    return _firebase.watchAllTasks(_uid!, onlyActive: onlyActive);
+    return _firebase.watchAllTasks(_uid!);
   }
 
 
@@ -125,31 +121,4 @@ class TaskRepository {
     await _syncToLocal(tasks);
   }
 
-  Future<void> updateTaskResilient(Task task) async {
-    task = await _ensureLocalId(task);
-
-    bool localSuccess = false;
-    bool firebaseSuccess = false;
-
-    try {
-      await _local.updateTask(task);
-      localSuccess = true;
-    } catch (e) {
-      print('Local update failed: $e');
-
-    }
-
-    if (_online && task.firebaseId != null) {
-      try {
-        await _firebase.updateTask(_uid!, task);
-        firebaseSuccess = true;
-      } catch (e) {
-        print('Firebase update failed: $e');
-      }
-    }
-
-    if (!localSuccess && !firebaseSuccess) {
-      throw Exception('Failed to update task on both local and Firebase');
-    }
-  }
 }

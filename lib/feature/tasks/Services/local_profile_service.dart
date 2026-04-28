@@ -35,25 +35,26 @@ class LocalProfileService {
     File? avatarFile,
   }) async {
     final db = LocalAuthService.instance.database;
-    if (db == null) {
-      return false;
-    }
-
-    String? avatarPath;
-    if (avatarFile != null) {
-      avatarPath = await saveAvatarImage(avatarFile, email);
-    }
-
+    if (db == null) return false;
     final data = <String, dynamic>{
       'name': name,
       'student_id': studentId,
       'password': password,
     };
 
-    if (avatarPath != null) {
-      data['avatar_path'] = avatarPath;
-    }
+    if (avatarFile != null) {
+      final oldUser = await getUserByEmail(email);
+      final oldAvatarPath = oldUser?['avatar_path'] as String?;
+      if (oldAvatarPath != null) {
+        final oldFile = File(oldAvatarPath);
+        if (await oldFile.exists()) await oldFile.delete();
+      }
 
+      final newAvatarPath = await saveAvatarImage(avatarFile, email);
+      if (newAvatarPath != null) {
+        data['avatar_path'] = newAvatarPath;
+      }
+    }
     final rows = await db.update(
       'users',
       data,

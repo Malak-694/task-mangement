@@ -25,13 +25,11 @@ class _EditProfileScreenState extends State<EditProfileScreen> {
   final _studentIdController = TextEditingController();
   final _passwordController = TextEditingController();
 
-  // _pickedImage is UI-only state → stays local, not in provider
   File? _pickedImage;
 
   @override
   void initState() {
     super.initState();
-    // Pre-fill from provider (already loaded by ProfileScreen)
     final profile = context.read<ProfileProvider>();
     _nameController.text      = profile.name      ?? '';
     _studentIdController.text = profile.studentId ?? '';
@@ -98,7 +96,6 @@ class _EditProfileScreenState extends State<EditProfileScreen> {
 
   @override
   Widget build(BuildContext context) {
-    // watch only for isSaving + avatarPath
     final profile = context.watch<ProfileProvider>();
 
     return Scaffold(
@@ -120,8 +117,6 @@ class _EditProfileScreenState extends State<EditProfileScreen> {
       body: Column(
         children: [
           const SizedBox(height: 20),
-
-          // ── Avatar ──────────────────────────────────────────────────────
           Stack(
             children: [
               CircleAvatar(
@@ -144,16 +139,18 @@ class _EditProfileScreenState extends State<EditProfileScreen> {
           ),
 
           const SizedBox(height: 32),
-
-          // ── Form ────────────────────────────────────────────────────────
           Expanded(
             child: Form(
               key: _formKey,
               child: ListView(
                 padding: const EdgeInsets.symmetric(horizontal: 20),
                 children: [
-                  EditField(label: 'NAME',       controller: _nameController,      validator: AuthValidator.fullName),
-                  EditField(label: 'STUDENT ID', controller: _studentIdController, validator: AuthValidator.studentId),
+                  EditField(label: 'NAME',
+                      controller: _nameController,
+                      validator: AuthValidator.fullName),
+                  EditField(label: 'STUDENT ID',
+                      controller: _studentIdController,
+                      validator: AuthValidator.studentId),
                   EditField(
                     label:      'PASSWORD',
                     controller: _passwordController,
@@ -165,8 +162,6 @@ class _EditProfileScreenState extends State<EditProfileScreen> {
               ),
             ),
           ),
-
-          // ── Buttons ─────────────────────────────────────────────────────
           Padding(
             padding: const EdgeInsets.fromLTRB(20, 0, 20, 36),
             child: Row(
@@ -176,11 +171,14 @@ class _EditProfileScreenState extends State<EditProfileScreen> {
                     onPressed: () => Navigator.pop(context),
                     style: OutlinedButton.styleFrom(
                       padding: const EdgeInsets.symmetric(vertical: 16),
-                      shape: const StadiumBorder(),
-                      side: BorderSide(color: AppColors.primary.withOpacity(0.5)),
+                      side: BorderSide(
+                          color: AppColors.primary.withOpacity(0.5)
+                      ),
                     ),
                     child: const Text('Cancel',
-                        style: TextStyle(color: AppColors.text, fontSize: 15, fontWeight: FontWeight.w500)),
+                        style: TextStyle(color: AppColors.text,
+                            fontSize: 15,
+                            fontWeight: FontWeight.w500)),
                   ),
                 ),
                 const SizedBox(width: 12),
@@ -191,7 +189,6 @@ class _EditProfileScreenState extends State<EditProfileScreen> {
                       backgroundColor: AppColors.primary,
                       foregroundColor: Colors.white,
                       padding: const EdgeInsets.symmetric(vertical: 16),
-                      shape: const StadiumBorder(),
                       elevation: 0,
                     ),
                     child: profile.isSaving
@@ -211,7 +208,6 @@ class _EditProfileScreenState extends State<EditProfileScreen> {
   }
 
   Widget _buildAvatar(String? savedPath) {
-    // Show newly picked image first, fall back to saved path
     if (_pickedImage != null) {
       return ClipOval(child: Image.file(_pickedImage!, width: 120, height: 120, fit: BoxFit.cover));
     }

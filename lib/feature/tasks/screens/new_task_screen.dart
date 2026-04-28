@@ -159,7 +159,7 @@ class _NewTaskScreenState extends State<NewTaskScreen> {
     if (confirmed == true && mounted) {
       await context.read<TaskProvider>().deleteTask(
         task,
-      ); // ✅ fixed: passes Task object
+      );
       if (mounted) Navigator.pop(context);
     }
   }
@@ -170,7 +170,6 @@ class _NewTaskScreenState extends State<NewTaskScreen> {
       backgroundColor: AppColors.background,
       appBar: AppBar(
         backgroundColor: AppColors.background,
-        elevation: 0,
         centerTitle: true,
         leading: IconButton(
           icon: const Icon(Icons.close, color: AppColors.text),
@@ -210,7 +209,7 @@ class _NewTaskScreenState extends State<NewTaskScreen> {
                 Field(
                   controller: _titleCtrl,
                   focusNode: _titleFocus,
-                  hint: 'e.g., Source velvet cushions...',
+                  hint: 'e.g., mobile assigment ...',
                   textInputAction: TextInputAction.next,
                   onFieldSubmitted: (_) =>
                       FocusScope.of(context).requestFocus(_descriptionFocus),

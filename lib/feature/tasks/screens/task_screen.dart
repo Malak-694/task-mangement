@@ -115,7 +115,6 @@ class _TaskScreenState extends State<TaskScreen> {
                     : provider.tasks.isEmpty
                     ? _buildEmptyState()
                     : RefreshIndicator(
-                  // ✅ changed: restarts the stream on pull-to-refresh
                   onRefresh: () async =>
                       context.read<TaskProvider>().startWatching(),
                   color: AppColors.primary,

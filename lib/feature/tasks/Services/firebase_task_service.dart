@@ -48,16 +48,14 @@ class FirebaseTaskService {
     return Task.fromFirestore(doc);
   }
 
-  Future<List<Task>> getAllTasks(String uid, {bool onlyActive = false}) async {
+  Future<List<Task>> getAllTasks(String uid) async {
     Query<Map<String, dynamic>> q = _col(uid).orderBy('due_date');
-    if (onlyActive) q = q.where('is_completed', isEqualTo: false);
     final snap = await q.get();
     return snap.docs.map(Task.fromFirestore).toList();
   }
 
-  Stream<List<Task>> watchAllTasks(String uid, {bool onlyActive = false}) {
+  Stream<List<Task>> watchAllTasks(String uid) {
     Query<Map<String, dynamic>> q = _col(uid).orderBy('due_date');
-    if (onlyActive) q = q.where('is_completed', isEqualTo: false);
     return q.snapshots().map((s) => s.docs.map(Task.fromFirestore).toList());
   }
 }

@@ -41,7 +41,6 @@ class _ProfileScreenState extends State<ProfileScreen> {
       backgroundColor: AppColors.background,
       appBar: AppBar(
         backgroundColor: AppColors.background,
-        elevation: 0,
         leading: TextButton(
           onPressed: () => Navigator.pop(context),
           child: const Text('← Back', style: TextStyle(color: AppColors.primary, fontSize: 14)),
@@ -79,10 +78,12 @@ class _ProfileScreenState extends State<ProfileScreen> {
             child: ListView(
               padding: const EdgeInsets.symmetric(horizontal: 20),
               children: [
-                ProfileField(label: 'Full Name',         value: profile.name      ?? '—'),
-                ProfileField(label: 'University Email',  value: profile.email     ?? '—'),
-                ProfileField(label: 'Student ID',        value: profile.studentId ?? '—'),
-                const ProfileField(label: 'Password', value: '••••••••', isPassword: true),
+                ProfileField(label: 'Full Name',
+                    value: profile.name      ?? '—'),
+                ProfileField(label: 'University Email',
+                    value: profile.email     ?? '—'),
+                ProfileField(label: 'Student ID',
+                    value: profile.studentId ?? '—'),
               ],
             ),
           ),

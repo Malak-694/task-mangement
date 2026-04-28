@@ -14,7 +14,7 @@ class FirebaseProfileService {
   final FirebaseFirestore _db = FirebaseFirestore.instance;
   final FirebaseAuth _auth = FirebaseAuth.instance;
 
-  Future<String?> saveAvatarImage(File imageFile, String email) async {
+  Future<String?> saveAvatarImage(File imageFile) async {
     try {
       final uid = _auth.currentUser?.uid;
       if (uid == null) return null;
@@ -45,7 +45,7 @@ class FirebaseProfileService {
 
       String? avatarUrl;
       if (avatarFile != null) {
-        avatarUrl = await saveAvatarImage(avatarFile, email);
+        avatarUrl = await saveAvatarImage(avatarFile);
       }
 
       final data = <String, dynamic>{
@@ -64,7 +64,7 @@ class FirebaseProfileService {
         try {
           await user!.updatePassword(password);
         } on FirebaseAuthException catch (e) {
-          // Password update failed, but profile still saved
+           print(e.toString());
         }
       }
       return true;

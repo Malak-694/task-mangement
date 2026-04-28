@@ -110,30 +110,18 @@ class LocalTaskService {
   }
 
   Future<List<Task>> getAllTasks({
-    bool onlyActive = false,
     String? sortBy,
     bool ascending = true,
   }) async {
     final db = await _ensureDb();
-    final where = onlyActive ? 'is_completed = 0' : null;
     final orderBy = sortBy != null
         ? '$sortBy ${ascending ? 'ASC' : 'DESC'}'
         : 'due_date ASC';
 
-    final maps = await db.query(_tasksTable, where: where, orderBy: orderBy);
+    final maps = await db.query(_tasksTable, orderBy: orderBy);
     return List.generate(maps.length, (i) => Task.fromMap(maps[i]));
   }
 
-  Future<List<Task>> getTasksByPriority(String priority) async {
-    final db = await _ensureDb();
-    final maps = await db.query(
-      _tasksTable,
-      where: 'priority = ? AND is_completed = 0',
-      whereArgs: [priority],
-      orderBy: 'due_date ASC',
-    );
-    return List.generate(maps.length, (i) => Task.fromMap(maps[i]));
-  }
 
   Future<List<Task>> getOverdueTasks() async {
     final db = await _ensureDb();
@@ -183,15 +171,6 @@ class LocalTaskService {
   Future<int> deleteTask(int id) async {
     final db = await _ensureDb();
     return await db.delete(_tasksTable, where: 'id = ?', whereArgs: [id]);
-  }
-
-  Future<int> deleteCompletedTasks() async {
-    final db = await _ensureDb();
-    return await db.delete(
-      _tasksTable,
-      where: 'is_completed = ?',
-      whereArgs: [1],
-    );
   }
 
   Future<Task?> getTaskByFirebaseId(String firebaseId) async {

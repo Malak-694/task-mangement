@@ -50,9 +50,9 @@ class TaskProvider extends ChangeNotifier {
   }
 
 
-  void startWatching({bool onlyActive = false}) {
+  void startWatching() {
     _subscription?.cancel();
-    final stream = _repo.watchAllTasks(onlyActive: onlyActive);
+    final stream = _repo.watchAllTasks();
 
     if (stream != null) {
       _set(TaskState.loading);
@@ -67,8 +67,7 @@ class TaskProvider extends ChangeNotifier {
         },
       );
     } else {
-      // OFFLINE: fall back to local DB query.
-      loadTasks(onlyActive: onlyActive);
+      loadTasks();
     }
   }
 
@@ -80,7 +79,6 @@ class TaskProvider extends ChangeNotifier {
     _set(TaskState.loading);
     try {
       _tasks = await _repo.getAllTasks(
-        onlyActive: onlyActive,
         sortBy: sortBy,
         ascending: ascending,
       );

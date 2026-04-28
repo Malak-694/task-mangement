@@ -12,7 +12,7 @@ class ProfileService {
 
   Future<String?> saveAvatarImage(File imageFile, String email) {
     if (FirebaseBootstrap.isReady) {
-      return FirebaseProfileService.instance.saveAvatarImage(imageFile, email);
+      return FirebaseProfileService.instance.saveAvatarImage(imageFile);
     }
     return LocalProfileService.instance.saveAvatarImage(imageFile, email);
   }
@@ -75,8 +75,8 @@ class ProfileService {
     final firebaseAvatarUrl = firebaseUser['avatar_url'] ?? firebaseUser['avatar_path'];
 
     return {
-      'name': firebaseUser['full_name'] ?? firebaseUser['name'] ?? localUser?['name'] ?? '',
-      'email': firebaseUser['university_email'] ?? firebaseUser['email'] ?? localUser?['email'] ?? '',
+      'name':  firebaseUser['full_name'] ?? localUser?['name'] ?? '',
+      'email':  firebaseUser['university_email'] ?? localUser?['email'] ?? '',
       'student_id': firebaseUser['student_id'] ?? localUser?['student_id'] ?? '',
       'gender': firebaseUser['gender'] ?? localUser?['gender'],
       'id': firebaseUser['id'] ?? localUser?['id'],
