@@ -88,6 +88,7 @@ class _NewTaskScreenState extends State<NewTaskScreen> {
     final task = Task(
       id: widget.taskToEdit?.id,
       firebaseId: widget.taskToEdit?.firebaseId,
+      uid: widget.taskToEdit?.uid,
       title: _titleCtrl.text.trim(),
       description: _descCtrl.text.trim().isNotEmpty
           ? _descCtrl.text.trim()

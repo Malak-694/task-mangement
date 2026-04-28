@@ -1,10 +1,9 @@
-// lib/feature/tasks/models/task.dart
-
 import 'package:cloud_firestore/cloud_firestore.dart';
 
 class Task {
   final int? id;
   final String? firebaseId;
+  final String? uid;
   final String title;
   final String? description;
   final DateTime dueDate;
@@ -16,6 +15,7 @@ class Task {
   Task({
     this.id,
     this.firebaseId,
+    this.uid,
     required this.title,
     this.description,
     required this.dueDate,
@@ -28,6 +28,7 @@ class Task {
   Map<String, dynamic> toMap() => {
     'id': id,
     'firebase_id': firebaseId,
+    'uid': uid,
     'title': title,
     'description': description,
     'due_date': dueDate.toIso8601String(),
@@ -40,6 +41,7 @@ class Task {
   factory Task.fromMap(Map<String, dynamic> map) => Task(
     id: map['id'],
     firebaseId: map['firebase_id'],
+    uid: map['uid'],
     title: map['title'],
     description: map['description'],
     dueDate: DateTime.parse(map['due_date']),
@@ -76,6 +78,7 @@ class Task {
   Task copyWith({
     int? id,
     String? firebaseId,
+    String? uid,
     String? title,
     String? description,
     DateTime? dueDate,
@@ -86,6 +89,7 @@ class Task {
   }) => Task(
     id: id ?? this.id,
     firebaseId: firebaseId ?? this.firebaseId,
+    uid: uid ?? this.uid,
     title: title ?? this.title,
     description: description ?? this.description,
     dueDate: dueDate ?? this.dueDate,

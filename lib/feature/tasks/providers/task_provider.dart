@@ -1,5 +1,3 @@
-// lib/feature/tasks/providers/task_provider.dart
-
 import 'dart:async';
 import 'package:flutter/foundation.dart';
 import '../models/task_model.dart';
@@ -49,23 +47,23 @@ class TaskProvider extends ChangeNotifier {
     return 'Less than a minute';
   }
 
-
   void startWatching() {
     _subscription?.cancel();
     final stream = _repo.watchAllTasks();
 
     if (stream != null) {
-      _set(TaskState.loading);
-      _subscription = stream.listen(
-            (tasks) {
-          _tasks = tasks;
-          _set(TaskState.success);
-        },
-        onError: (e) {
-          _error = e.toString();
-          _set(TaskState.failure);
-        },
-      );
+      loadTasks().then((_) {
+        _subscription = stream.listen(
+              (tasks) {
+            _tasks = tasks;
+            _set(TaskState.success);
+          },
+          onError: (e) {
+            _error = e.toString();
+            notifyListeners();
+          },
+        );
+      });
     } else {
       loadTasks();
     }
@@ -89,47 +87,44 @@ class TaskProvider extends ChangeNotifier {
     }
   }
 
-
   Future<void> addTask(Task task) async {
-    await _repo.insertTask(task);
-    if (_subscription == null) await loadTasks();
+    final saved = await _repo.insertTask(task);
+    debugPrint('Inserted task id: ${saved.id}, firebase: ${saved.firebaseId}');
+    debugPrint('Tasks before reload: ${_tasks.length}');
+    if (_subscription != null) {
+      return;
+    }
+    await loadTasks();
+    debugPrint('Tasks after reload: ${_tasks.length}');
   }
 
   Future<void> updateTask(Task task) async {
     await _repo.updateTask(task);
-    if (_subscription == null) {
-      final i = _tasks.indexWhere((t) => t.id == task.id);
-      if (i != -1) _tasks[i] = task;
-      notifyListeners();
-    }
+    final i = _tasks.indexWhere((t) => t.id == task.id);
+    if (i != -1) _tasks[i] = task;
+    notifyListeners();
   }
 
   Future<void> toggleComplete(Task task) async {
     final updated = task.copyWith(isCompleted: !task.isCompleted);
     await _repo.markCompleted(task, updated.isCompleted);
-    if (_subscription == null) {
-      final i = _tasks.indexWhere((t) => t.id == task.id);
-      if (i != -1) _tasks[i] = updated;
-      notifyListeners();
-    }
+    final i = _tasks.indexWhere((t) => t.id == task.id);
+    if (i != -1) _tasks[i] = updated;
+    notifyListeners();
   }
 
   Future<void> toggleFavorite(Task task) async {
     final updated = task.copyWith(isFavorite: !task.isFavorite);
     await _repo.markFavorite(task, updated.isFavorite);
-    if (_subscription == null) {
-      final i = _tasks.indexWhere((t) => t.id == task.id);
-      if (i != -1) _tasks[i] = updated;
-      notifyListeners();
-    }
+    final i = _tasks.indexWhere((t) => t.id == task.id);
+    if (i != -1) _tasks[i] = updated;
+    notifyListeners();
   }
 
   Future<void> deleteTask(Task task) async {
     await _repo.deleteTask(task);
-    if (_subscription == null) {
-      _tasks.removeWhere((t) => t.id == task.id);
-      notifyListeners();
-    }
+    _tasks.removeWhere((t) => t.id == task.id);
+    notifyListeners();
   }
 
   @override

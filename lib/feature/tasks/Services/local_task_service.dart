@@ -1,5 +1,3 @@
-// lib/feature/tasks/data/local_task_service.dart
-
 import 'package:sqflite/sqflite.dart';
 import 'package:path/path.dart';
 import '../models/task_model.dart';
@@ -21,7 +19,7 @@ class LocalTaskService {
 
     _database = await openDatabase(
       fullPath,
-      version: 3,
+      version: 4,
       onCreate: _onCreate,
       onUpgrade: _onUpgrade,
       onConfigure: (db) async {
@@ -36,6 +34,7 @@ class LocalTaskService {
       CREATE TABLE $_tasksTable(
         id INTEGER PRIMARY KEY AUTOINCREMENT,
         firebase_id TEXT,
+        uid TEXT,
         title TEXT NOT NULL,
         description TEXT,
         due_date TEXT NOT NULL,
@@ -46,18 +45,11 @@ class LocalTaskService {
       )
     ''');
 
-    await db.execute(
-      'CREATE INDEX idx_tasks_due_date ON $_tasksTable(due_date)',
-    );
-    await db.execute(
-      'CREATE INDEX idx_tasks_priority ON $_tasksTable(priority)',
-    );
-    await db.execute(
-      'CREATE INDEX idx_tasks_completed ON $_tasksTable(is_completed)',
-    );
-    await db.execute(
-      'CREATE INDEX idx_tasks_favorite ON $_tasksTable(is_favorite)',
-    );
+    await db.execute('CREATE INDEX idx_tasks_due_date ON $_tasksTable(due_date)');
+    await db.execute('CREATE INDEX idx_tasks_priority ON $_tasksTable(priority)');
+    await db.execute('CREATE INDEX idx_tasks_completed ON $_tasksTable(is_completed)');
+    await db.execute('CREATE INDEX idx_tasks_favorite ON $_tasksTable(is_favorite)');
+    await db.execute('CREATE INDEX idx_tasks_uid ON $_tasksTable(uid)'); // 👈 new
   }
 
   Future<void> _onUpgrade(Database db, int oldVersion, int newVersion) async {
@@ -66,6 +58,7 @@ class LocalTaskService {
         CREATE TABLE ${_tasksTable}_new(
           id INTEGER PRIMARY KEY AUTOINCREMENT,
           firebase_id TEXT,
+          uid TEXT,
           title TEXT NOT NULL,
           description TEXT,
           due_date TEXT NOT NULL,
@@ -75,7 +68,6 @@ class LocalTaskService {
           reminder_enabled INTEGER NOT NULL DEFAULT 0
         )
       ''');
-
       await db.execute('''
         INSERT INTO ${_tasksTable}_new (
           id, title, description, due_date, priority, created_at, is_completed
@@ -83,7 +75,6 @@ class LocalTaskService {
         SELECT id, title, description, due_date, priority, created_at, is_completed
         FROM $_tasksTable
       ''');
-
       await db.execute('DROP TABLE $_tasksTable');
       await db.execute('ALTER TABLE ${_tasksTable}_new RENAME TO $_tasksTable');
     }
@@ -95,11 +86,21 @@ class LocalTaskService {
         'CREATE INDEX idx_tasks_favorite ON $_tasksTable(is_favorite)',
       );
     }
+    if (oldVersion < 4) {
+      await db.execute(
+        'ALTER TABLE $_tasksTable ADD COLUMN uid TEXT',
+      );
+      await db.execute(
+        'CREATE INDEX idx_tasks_uid ON $_tasksTable(uid)',
+      );
+    }
   }
 
-  Future<int> insertTask(Task task) async {
+  Future<int> insertTask(Task task, {String? uid}) async {
     final db = await _ensureDb();
-    return await db.insert(_tasksTable, task.toMap());
+    final map = task.toMap();
+    if (uid != null) map['uid'] = uid;
+    return await db.insert(_tasksTable, map);
   }
 
   Future<Task?> getTaskById(int id) async {
@@ -110,6 +111,7 @@ class LocalTaskService {
   }
 
   Future<List<Task>> getAllTasks({
+    String? uid,
     String? sortBy,
     bool ascending = true,
   }) async {
@@ -118,31 +120,37 @@ class LocalTaskService {
         ? '$sortBy ${ascending ? 'ASC' : 'DESC'}'
         : 'due_date ASC';
 
-    final maps = await db.query(_tasksTable, orderBy: orderBy);
-    return List.generate(maps.length, (i) => Task.fromMap(maps[i]));
-  }
-
-
-  Future<List<Task>> getOverdueTasks() async {
-    final db = await _ensureDb();
-    final now = DateTime.now().toIso8601String();
-    final maps = await db.rawQuery(
-      '''
-      SELECT * FROM $_tasksTable
-      WHERE due_date < ? AND is_completed = 0
-      ORDER BY due_date ASC
-    ''',
-      [now],
+    final maps = await db.query(
+      _tasksTable,
+      where: uid != null ? 'uid = ?' : null,
+      whereArgs: uid != null ? [uid] : null,
+      orderBy: orderBy,
     );
     return List.generate(maps.length, (i) => Task.fromMap(maps[i]));
   }
 
-  Future<int> updateTask(Task task) async {
+  Future<List<Task>> getOverdueTasks({String? uid}) async {
+    final db = await _ensureDb();
+    final now = DateTime.now().toIso8601String();
+    final whereArgs = uid != null ? [now, uid] : [now];
+    final where = uid != null
+        ? 'due_date < ? AND is_completed = 0 AND uid = ?'
+        : 'due_date < ? AND is_completed = 0';
+    final maps = await db.rawQuery(
+      'SELECT * FROM $_tasksTable WHERE $where ORDER BY due_date ASC',
+      whereArgs,
+    );
+    return List.generate(maps.length, (i) => Task.fromMap(maps[i]));
+  }
+
+  Future<int> updateTask(Task task, {String? uid}) async {
     final db = await _ensureDb();
     if (task.id == null) throw Exception('Cannot update task without id');
+    final map = task.toMap();
+    if (uid != null) map['uid'] = uid;
     return await db.update(
       _tasksTable,
-      task.toMap(),
+      map,
       where: 'id = ?',
       whereArgs: [task.id],
     );
@@ -173,12 +181,14 @@ class LocalTaskService {
     return await db.delete(_tasksTable, where: 'id = ?', whereArgs: [id]);
   }
 
-  Future<Task?> getTaskByFirebaseId(String firebaseId) async {
+  Future<Task?> getTaskByFirebaseId(String firebaseId, {String? uid}) async {
     final db = await _ensureDb();
     final maps = await db.query(
       _tasksTable,
-      where: 'firebase_id = ?',
-      whereArgs: [firebaseId],
+      where: uid != null
+          ? 'firebase_id = ? AND uid = ?'
+          : 'firebase_id = ?',
+      whereArgs: uid != null ? [firebaseId, uid] : [firebaseId],
     );
     if (maps.isEmpty) return null;
     return Task.fromMap(maps.first);

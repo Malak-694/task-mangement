@@ -4,6 +4,7 @@ import 'package:flutter/material.dart';
 import 'package:mobile_assignment/core/firebase/firebase_bootstrap.dart';
 import 'package:mobile_assignment/feature/auth/services/local_auth_service.dart';
 import 'package:mobile_assignment/feature/tasks/Services/task_reprositry.dart';
+import 'package:mobile_assignment/feature/tasks/models/task_model.dart';
 import 'package:mobile_assignment/feature/tasks/screens/deadline_reminder_screen.dart';
 import 'package:mobile_assignment/feature/tasks/screens/edit_screen.dart';
 import 'package:mobile_assignment/feature/tasks/screens/favorite_tasks_screen.dart';
@@ -66,14 +67,17 @@ class MainApp extends StatelessWidget {
       title: 'Mobile Assignment',
       initialRoute: startRoute,
       routes: <String, WidgetBuilder>{
-        LoginScreen.routeName: (_) => const LoginScreen(),
-        SignupScreen.routeName: (_) => const SignupScreen(),
-        TaskScreen.routeName: (_) => const TaskScreen(),
-        DeadlineReminderScreen.routeName: (_) => const DeadlineReminderScreen(),
-        FavoriteTasksScreen.routeName: (_) => const FavoriteTasksScreen(),
-        EditProfileScreen.routeName: (_) => const EditProfileScreen(),
-        ProfileScreen.routeName: (_) => ProfileScreen(),
-        NewTaskScreen.routeName: (_) => NewTaskScreen(),
+        LoginScreen.routeName:            (_)   => const LoginScreen(),
+        SignupScreen.routeName:           (_)   => const SignupScreen(),
+        TaskScreen.routeName:             (_)   => const TaskScreen(),
+        DeadlineReminderScreen.routeName: (_)   => const DeadlineReminderScreen(),
+        FavoriteTasksScreen.routeName:    (_)   => const FavoriteTasksScreen(),
+        EditProfileScreen.routeName:      (_)   => const EditProfileScreen(),
+        ProfileScreen.routeName:          (_)   => ProfileScreen(),
+        NewTaskScreen.routeName:          (ctx) {
+          final task = ModalRoute.of(ctx)?.settings.arguments as Task?;
+          return NewTaskScreen(taskToEdit: task);
+        },
       },
     );
   }

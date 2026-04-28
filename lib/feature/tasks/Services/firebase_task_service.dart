@@ -23,18 +23,18 @@ class FirebaseTaskService {
   }
 
   Future<void> markCompleted(
-    String uid,
-    String firebaseId,
-    bool completed,
-  ) async {
+      String uid,
+      String firebaseId,
+      bool completed,
+      ) async {
     await _col(uid).doc(firebaseId).update({'is_completed': completed});
   }
 
   Future<void> markFavorite(
-    String uid,
-    String firebaseId,
-    bool favorite,
-  ) async {
+      String uid,
+      String firebaseId,
+      bool favorite,
+      ) async {
     await _col(uid).doc(firebaseId).update({'is_favorite': favorite});
   }
 
@@ -56,6 +56,8 @@ class FirebaseTaskService {
 
   Stream<List<Task>> watchAllTasks(String uid) {
     Query<Map<String, dynamic>> q = _col(uid).orderBy('due_date');
-    return q.snapshots().map((s) => s.docs.map(Task.fromFirestore).toList());
+    return q
+        .snapshots(includeMetadataChanges: false)
+        .map((s) => s.docs.map(Task.fromFirestore).toList());
   }
 }

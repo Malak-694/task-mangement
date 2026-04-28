@@ -1,3 +1,5 @@
+// task_screen.dart
+
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 
@@ -79,12 +81,10 @@ class _TaskScreenState extends State<TaskScreen> {
                   ),
                   const Spacer(),
                   ElevatedButton(
-                    onPressed: () async {
-                      await Navigator.pushNamed(
-                        context,
-                        NewTaskScreen.routeName,
-                      );
-                    },
+                    onPressed: () => Navigator.pushNamed(
+                      context,
+                      NewTaskScreen.routeName,
+                    ),
                     style: ElevatedButton.styleFrom(
                       backgroundColor: AppColors.button,
                       padding: const EdgeInsets.symmetric(
@@ -115,8 +115,8 @@ class _TaskScreenState extends State<TaskScreen> {
                     : provider.tasks.isEmpty
                     ? _buildEmptyState()
                     : RefreshIndicator(
-                  onRefresh: () async =>
-                      context.read<TaskProvider>().startWatching(),
+                  onRefresh: () =>
+                      context.read<TaskProvider>().loadTasks(),
                   color: AppColors.primary,
                   child: ListView.separated(
                     padding: const EdgeInsets.only(bottom: 20),
@@ -127,19 +127,19 @@ class _TaskScreenState extends State<TaskScreen> {
                       final task = provider.tasks[index];
                       return TaskCard(
                         task: task,
-                        onDeleted: () => _deleteTask(task),
+                        onDeleted: () => context
+                            .read<TaskProvider>()
+                            .deleteTask(task),
                         onToggleComplete: () => context
                             .read<TaskProvider>()
                             .toggleComplete(task),
                         onToggleFavorite: () => context
                             .read<TaskProvider>()
                             .toggleFavorite(task),
-                        onEdited: () => Navigator.push(
+                        onEdited: () => Navigator.pushNamed(
                           context,
-                          MaterialPageRoute(
-                            builder: (_) =>
-                                NewTaskScreen(taskToEdit: task),
-                          ),
+                          NewTaskScreen.routeName,
+                          arguments: task,
                         ),
                       );
                     },
@@ -151,31 +151,6 @@ class _TaskScreenState extends State<TaskScreen> {
         ),
       ),
     );
-  }
-
-  Future<void> _deleteTask(Task task) async {
-    final shouldDelete = await showDialog<bool>(
-      context: context,
-      builder: (context) => AlertDialog(
-        title: const Text('Delete task?'),
-        content: const Text('This action cannot be undone.'),
-        actions: [
-          TextButton(
-            onPressed: () => Navigator.of(context).pop(false),
-            child: const Text('Cancel'),
-          ),
-          TextButton(
-            onPressed: () => Navigator.of(context).pop(true),
-            style: TextButton.styleFrom(foregroundColor: Colors.red),
-            child: const Text('Delete'),
-          ),
-        ],
-      ),
-    );
-
-    if (shouldDelete == true && mounted) {
-      await context.read<TaskProvider>().deleteTask(task);
-    }
   }
 
   Widget _buildEmptyState() {

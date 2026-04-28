@@ -60,6 +60,27 @@ class _TaskCardState extends State<TaskCard> {
         ),
         child: const Icon(Icons.delete_outline, color: Colors.white),
       ),
+      confirmDismiss: (_) async {
+        final confirmed = await showDialog<bool>(
+          context: context,
+          builder: (ctx) => AlertDialog(
+            title: const Text('Delete task?'),
+            content: const Text('This action cannot be undone.'),
+            actions: [
+              TextButton(
+                onPressed: () => Navigator.of(ctx).pop(false),
+                child: const Text('Cancel'),
+              ),
+              TextButton(
+                onPressed: () => Navigator.of(ctx).pop(true),
+                style: TextButton.styleFrom(foregroundColor: Colors.red),
+                child: const Text('Delete'),
+              ),
+            ],
+          ),
+        );
+        return confirmed ?? false;
+      },
       onDismissed: (_) => widget.onDeleted?.call(),
       child: Container(
         decoration: BoxDecoration(
@@ -126,14 +147,14 @@ class _TaskCardState extends State<TaskCard> {
                     ),
                     child: widget.task.isCompleted
                         ? const Icon(
-                            Icons.check,
-                            size: 13,
-                            color: AppColors.buttonText,
-                          )
+                      Icons.check,
+                      size: 13,
+                      color: AppColors.buttonText,
+                    )
                         : null,
                   ),
                 ),
-                SizedBox(width: 14,),
+                const SizedBox(width: 14),
                 Expanded(
                   child: Column(
                     crossAxisAlignment: CrossAxisAlignment.start,
@@ -155,7 +176,6 @@ class _TaskCardState extends State<TaskCard> {
                         overflow: TextOverflow.ellipsis,
                       ),
                       const SizedBox(height: 6),
-                  
                       if (widget.task.description?.isNotEmpty == true)
                         Padding(
                           padding: const EdgeInsets.only(top: 4),
@@ -172,19 +192,16 @@ class _TaskCardState extends State<TaskCard> {
                         ),
                     ],
                   ),
-                )
+                ),
               ],
             ),
             const SizedBox(height: 16),
-
             Divider(
               color: AppColors.primary.withOpacity(0.25),
               height: 1,
               thickness: 0.5,
             ),
-
             const SizedBox(height: 14),
-
             Row(
               children: [
                 Icon(
@@ -203,7 +220,6 @@ class _TaskCardState extends State<TaskCard> {
                     fontWeight: isOverdue ? FontWeight.w600 : null,
                   ),
                 ),
-
                 const Spacer(),
                 if (widget.showDeleteEditAction) ...[
                   InkWell(
@@ -235,7 +251,6 @@ class _TaskCardState extends State<TaskCard> {
                       ),
                     ),
                   ),
-
                   const SizedBox(width: 8),
                   InkWell(
                     onTap: widget.onDeleted,
