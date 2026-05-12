@@ -122,8 +122,12 @@ class TaskProvider extends ChangeNotifier {
   }
 
   Future<void> deleteTask(Task task) async {
-    await _repo.deleteTask(task);
-    _tasks.removeWhere((t) => t.id == task.id);
+    final resolved = await _repo.deleteTask(task);
+    if (_subscription != null) return;
+    _tasks.removeWhere((t) =>
+    t.id == resolved.id ||
+        (t.firebaseId != null && t.firebaseId == resolved.firebaseId)
+    );
     notifyListeners();
   }
 

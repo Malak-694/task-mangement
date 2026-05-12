@@ -95,7 +95,7 @@ class TaskRepository {
     }
   }
 
-  Future<void> deleteTask(Task task) async {
+  Future<Task> deleteTask(Task task) async {
     task = await _ensureLocalId(task);
     await _local.deleteTask(task.id!);
     if (_online && task.firebaseId != null) {
@@ -105,6 +105,7 @@ class TaskRepository {
             .timeout(const Duration(seconds: 2));
       } catch (_) {}
     }
+    return task;
   }
 
   Stream<List<Task>>? watchAllTasks({bool onlyActive = false}) {
